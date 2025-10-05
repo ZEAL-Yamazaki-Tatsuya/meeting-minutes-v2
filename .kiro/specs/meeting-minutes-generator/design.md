@@ -69,6 +69,349 @@ graph TB
     MinutesLambda -.->|ログ| CloudWatch
 ```
 
+### Sequence Diagram - Complete Flow
+
+```mermaid
+sequenceDiagram
+    actor User as ユーザー
+    participant Web as Webアプリ
+    participant CF as CloudFront
+    participant APIGW as API Gateway
+    participant UploadLambda as Upload Lambda
+    participant S3Input as S3 Input Bucket
+    participant DDB as DynamoDB
+    participant SF as Step Functions
+    participant TranscribeLambda as Transcribe Lambda
+    participant Transcribe as AWS Transcribe
+    participant S3Output as S3 Output Bucket
+    participant MinutesLambda as Minutes Lambda
+    participant Bedrock as Amazon Bedrock
+    participant StatusLambda as Status Lambda
+    participant DownloadLambda as Download Lambda
+
+    Note over User,DownloadLambda: 1. アップロードフェーズ
+    User->>Web: MP4ファイルを選択
+    Web->>APIGW: POST /api/upload
+    APIGW->>UploadLambda: リクエスト転送
+    UploadLambda->>S3Input: Presigned URL生成
+    UploadLambda->>DDB: ジョブレコード作成 (UPLOADED)
+    UploadLambda-->>Web: Presigned URL + jobId
+    Web->>S3Input: MP4ファイル直接アップロード
+    S3Input-->>Web: アップロード完了
+    Web->>APIGW: ワークフロー開始リクエスト
+    APIGW->>UploadLambda: 処理開始
+    UploadLambda->>SF: ワークフロー起動
+    UploadLambda-->>Web: 処理開始確認
+
+    Note over User,DownloadLambda: 2. 文字起こしフェーズ
+    SF->>TranscribeLambda: TranscribeVideo ステート
+    TranscribeLambda->>DDB: ステータス更新 (TRANSCRIBING)
+    TranscribeLambda->>Transcribe: 文字起こしジョブ開始
+    Transcribe-->>TranscribeLambda: ジョブID
+    TranscribeLambda-->>SF: 完了
+    
+    loop ポーリング
+        SF->>TranscribeLambda: CheckTranscriptionStatus
+        TranscribeLambda->>Transcribe: ステータス確認
+        Transcribe-->>TranscribeLambda: IN_PROGRESS
+        TranscribeLambda-->>SF: 待機
+        SF->>SF: Wait 30秒
+    end
+    
+    SF->>TranscribeLambda: CheckTranscriptionStatus
+    TranscribeLambda->>Transcribe: ステータス確認
+    Transcribe-->>TranscribeLambda: COMPLETED
+    Transcribe->>S3Output: transcript.json保存
+    TranscribeLambda-->>SF: 完了
+
+    Note over User,DownloadLambda: 3. 議事録生成フェーズ
+    SF->>MinutesLambda: GenerateMinutes ステート
+    MinutesLambda->>DDB: ステータス更新 (GENERATING)
+    MinutesLambda->>S3Output: transcript.json取得
+    MinutesLambda->>Bedrock: 議事録生成リクエスト
+    Bedrock-->>MinutesLambda: 構造化された議事録
+    MinutesLambda->>S3Output: minutes.md保存
+    MinutesLambda->>DDB: ステータス更新 (COMPLETED)
+    MinutesLambda-->>SF: 完了
+    SF-->>SF: Success
+
+    Note over User,DownloadLambda: 4. ステータス確認（ポーリング）
+    loop 処理中
+        User->>Web: ステータス確認
+        Web->>APIGW: GET /api/jobs/{jobId}
+        APIGW->>StatusLambda: リクエスト転送
+        StatusLambda->>DDB: ジョブ情報取得
+        DDB-->>StatusLambda: ジョブデータ
+        StatusLambda-->>Web: ステータス情報
+        Web-->>User: 進捗表示
+    end
+
+    Note over User,DownloadLambda: 5. 議事録取得・ダウンロード
+    User->>Web: 議事録表示リクエスト
+    Web->>APIGW: GET /api/jobs/{jobId}/minutes
+    APIGW->>DownloadLambda: リクエスト転送
+    DownloadLambda->>S3Output: minutes.md取得
+    S3Output-->>DownloadLambda: 議事録データ
+    DownloadLambda-->>Web: 議事録内容
+    Web-->>User: 議事録表示
+
+    User->>Web: ダウンロードボタンクリック
+    Web->>APIGW: GET /api/jobs/{jobId}/download?format=pdf
+    APIGW->>DownloadLambda: リクエスト転送
+    DownloadLambda->>S3Output: Presigned URL生成
+    DownloadLambda-->>Web: ダウンロードURL
+    Web->>S3Output: ファイルダウンロード
+    S3Output-->>User: ファイル取得
+```
+
+### System Architecture Diagram
+
+```mermaid
+C4Context
+    title System Context Diagram - Meeting Minutes Generator
+
+    Person(user, "ユーザー", "会議の議事録を<br/>自動生成したい人")
+    
+    System_Boundary(system, "Meeting Minutes Generator") {
+        System(webapp, "Webアプリケーション", "Next.js/React<br/>ファイルアップロード<br/>議事録表示・編集")
+        System(api, "API Gateway", "RESTful API<br/>認証・認可")
+        System(processing, "処理パイプライン", "Lambda + Step Functions<br/>文字起こし・議事録生成")
+        SystemDb(storage, "ストレージ", "S3 + DynamoDB<br/>ファイル・メタデータ")
+    }
+    
+    System_Ext(transcribe, "AWS Transcribe", "音声文字起こし<br/>サービス")
+    System_Ext(bedrock, "Amazon Bedrock", "LLM API<br/>議事録生成")
+    System_Ext(cognito, "Amazon Cognito", "ユーザー認証")
+    System_Ext(cloudwatch, "CloudWatch", "ログ・監視")
+    
+    Rel(user, webapp, "使用", "HTTPS")
+    Rel(webapp, api, "API呼び出し", "HTTPS/REST")
+    Rel(api, processing, "処理実行", "Lambda invoke")
+    Rel(processing, storage, "読み書き", "AWS SDK")
+    Rel(processing, transcribe, "文字起こし", "AWS SDK")
+    Rel(processing, bedrock, "議事録生成", "AWS SDK")
+    Rel(api, cognito, "認証", "JWT")
+    Rel(processing, cloudwatch, "ログ送信", "CloudWatch Logs")
+    Rel(webapp, storage, "直接アップロード", "Presigned URL")
+```
+
+### Network Diagram
+
+```mermaid
+graph TB
+    subgraph "Internet"
+        User[ユーザー<br/>ブラウザ]
+    end
+    
+    subgraph "AWS Cloud"
+        subgraph "Edge Services"
+            CloudFront[CloudFront CDN<br/>グローバル配信]
+            Route53[Route 53<br/>DNS]
+        end
+        
+        subgraph "Region: ap-northeast-1 (Tokyo)"
+            subgraph "Public Subnet"
+                APIGW[API Gateway<br/>REST API]
+                S3Web[S3 Bucket<br/>静的Webホスティング]
+            end
+            
+            subgraph "AWS Managed Services"
+                Cognito[Cognito<br/>ユーザープール]
+                
+                subgraph "Compute Layer"
+                    Lambda1[Lambda<br/>Upload Handler]
+                    Lambda2[Lambda<br/>Status Checker]
+                    Lambda3[Lambda<br/>Download Handler]
+                    Lambda4[Lambda<br/>Transcribe Trigger]
+                    Lambda5[Lambda<br/>Minutes Generator]
+                    SF[Step Functions<br/>ワークフロー]
+                end
+                
+                subgraph "AI/ML Services"
+                    Transcribe[AWS Transcribe<br/>音声認識]
+                    Bedrock[Amazon Bedrock<br/>LLM API]
+                end
+                
+                subgraph "Storage Layer"
+                    S3Input[S3 Bucket<br/>Input Videos<br/>暗号化: SSE-S3]
+                    S3Output[S3 Bucket<br/>Output Documents<br/>暗号化: SSE-S3]
+                    DDB[(DynamoDB<br/>Job Metadata<br/>暗号化: at rest)]
+                end
+                
+                subgraph "Monitoring"
+                    CloudWatch[CloudWatch<br/>Logs & Metrics]
+                    XRay[X-Ray<br/>トレーシング]
+                end
+            end
+        end
+    end
+    
+    User -->|HTTPS| Route53
+    Route53 -->|DNS解決| CloudFront
+    CloudFront -->|キャッシュ| S3Web
+    CloudFront -->|API| APIGW
+    
+    APIGW -->|認証| Cognito
+    APIGW -->|invoke| Lambda1
+    APIGW -->|invoke| Lambda2
+    APIGW -->|invoke| Lambda3
+    
+    Lambda1 -->|Presigned URL| S3Input
+    Lambda1 -->|ジョブ作成| DDB
+    Lambda1 -->|開始| SF
+    
+    SF -->|invoke| Lambda4
+    SF -->|invoke| Lambda5
+    
+    Lambda4 -->|ジョブ開始| Transcribe
+    Transcribe -->|結果保存| S3Output
+    
+    Lambda5 -->|読み取り| S3Output
+    Lambda5 -->|API呼び出し| Bedrock
+    Lambda5 -->|保存| S3Output
+    Lambda5 -->|更新| DDB
+    
+    Lambda2 -->|読み取り| DDB
+    Lambda3 -->|読み取り| S3Output
+    
+    Lambda1 -.->|ログ| CloudWatch
+    Lambda2 -.->|ログ| CloudWatch
+    Lambda3 -.->|ログ| CloudWatch
+    Lambda4 -.->|ログ| CloudWatch
+    Lambda5 -.->|ログ| CloudWatch
+    SF -.->|ログ| CloudWatch
+    
+    Lambda1 -.->|トレース| XRay
+    Lambda5 -.->|トレース| XRay
+    
+    style User fill:#e1f5ff
+    style CloudFront fill:#ff9900
+    style APIGW fill:#ff9900
+    style Lambda1 fill:#ff9900
+    style Lambda2 fill:#ff9900
+    style Lambda3 fill:#ff9900
+    style Lambda4 fill:#ff9900
+    style Lambda5 fill:#ff9900
+    style SF fill:#ff9900
+    style S3Input fill:#569a31
+    style S3Output fill:#569a31
+    style S3Web fill:#569a31
+    style DDB fill:#3b48cc
+    style Transcribe fill:#ff9900
+    style Bedrock fill:#ff9900
+    style Cognito fill:#dd344c
+    style CloudWatch fill:#ff9900
+    style XRay fill:#ff9900
+```
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    USER ||--o{ MEETING_JOB : creates
+    MEETING_JOB ||--o| VIDEO_FILE : has
+    MEETING_JOB ||--o| TRANSCRIPT : generates
+    MEETING_JOB ||--o| MINUTES : produces
+    TRANSCRIPT ||--o{ SPEAKER_SEGMENT : contains
+    MINUTES ||--o{ DECISION : includes
+    MINUTES ||--o{ NEXT_ACTION : includes
+    MINUTES ||--o{ SPEAKER : identifies
+
+    USER {
+        string userId PK "Cognito User ID"
+        string email
+        string name
+        timestamp createdAt
+        timestamp lastLoginAt
+    }
+
+    MEETING_JOB {
+        string jobId PK "UUID"
+        string userId FK "User ID"
+        string status "UPLOADED|TRANSCRIBING|GENERATING|COMPLETED|FAILED"
+        timestamp createdAt
+        timestamp updatedAt
+        string videoFileName
+        string videoS3Key
+        number videoSize
+        number videoDuration
+        string transcribeJobName
+        string transcriptS3Key
+        string minutesS3Key
+        string errorMessage
+        json metadata
+    }
+
+    VIDEO_FILE {
+        string s3Key PK "S3 Object Key"
+        string jobId FK
+        string fileName
+        number fileSize
+        string contentType
+        timestamp uploadedAt
+        string checksum
+    }
+
+    TRANSCRIPT {
+        string transcriptId PK "UUID"
+        string jobId FK
+        string s3Key
+        text fullText
+        json transcribeOutput
+        number duration
+        number speakerCount
+        timestamp generatedAt
+    }
+
+    SPEAKER_SEGMENT {
+        string segmentId PK "UUID"
+        string transcriptId FK
+        string speakerId
+        number startTime
+        number endTime
+        text content
+        number confidence
+    }
+
+    MINUTES {
+        string minutesId PK "UUID"
+        string jobId FK
+        text summary
+        string s3KeyMarkdown
+        string s3KeyPdf
+        timestamp generatedAt
+        string llmModel
+        json metadata
+    }
+
+    DECISION {
+        string decisionId PK "UUID"
+        string minutesId FK
+        text description
+        string timestamp
+        number orderIndex
+    }
+
+    NEXT_ACTION {
+        string actionId PK "UUID"
+        string minutesId FK
+        text description
+        string assignee
+        date dueDate
+        string timestamp
+        string status "PENDING|IN_PROGRESS|COMPLETED"
+        number orderIndex
+    }
+
+    SPEAKER {
+        string speakerId PK "UUID"
+        string minutesId FK
+        string name
+        number segmentCount
+        number totalDuration
+    }
+```
+
 ### Data Flow
 
 1. **アップロードフェーズ**
