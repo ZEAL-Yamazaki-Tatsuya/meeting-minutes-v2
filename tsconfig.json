@@ -24,6 +24,6 @@
     "resolveJsonModule": true,
     "outDir": "dist"
   },
-  "include": ["bin/**/*", "lib/**/*", "lambda/**/*"],
+  "include": ["bin/**/*", "lib/**/*", "lambda/**/*", "src/**/*"],
   "exclude": ["node_modules", "cdk.out", "dist"]
 }

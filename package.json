@@ -4,11 +4,13 @@
   "description": "Automated meeting minutes generator from MP4 files",
   "scripts": {
     "build": "tsc",
+    "build:lambdas": "npm run build && pwsh scripts/build-lambdas.ps1",
     "watch": "tsc -w",
     "test": "jest",
+    "test:watch": "jest --watch",
     "cdk": "cdk",
-    "deploy": "cdk deploy",
-    "synth": "cdk synth"
+    "deploy": "npm run build:lambdas && cdk deploy",
+    "synth": "npm run build:lambdas && cdk synth"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
@@ -23,7 +25,10 @@
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.450.0",
+    "@aws-sdk/client-s3": "^3.450.0",
     "@aws-sdk/lib-dynamodb": "^3.450.0",
+    "@aws-sdk/s3-request-presigner": "^3.450.0",
+    "@types/aws-lambda": "^8.10.130",
     "aws-cdk-lib": "^2.100.0",
     "constructs": "^10.0.0",
     "dotenv": "^16.3.0",
