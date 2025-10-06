@@ -18,7 +18,6 @@ function ProgressSteps({ status }: { status: JobStatus }) {
 
   const statusOrder = ['UPLOADED', 'TRANSCRIBING', 'GENERATING', 'COMPLETED'];
   const currentIndex = statusOrder.indexOf(status);
-  const isFailed = status === 'FAILED';
 
   return (
     <div className="w-full">
@@ -26,7 +25,6 @@ function ProgressSteps({ status }: { status: JobStatus }) {
         {steps.map((step, index) => {
           const isActive = index === currentIndex;
           const isCompleted = index < currentIndex || status === 'COMPLETED';
-          const isDisabled = isFailed || index > currentIndex;
 
           return (
             <div key={step.key} className="flex-1 relative">
