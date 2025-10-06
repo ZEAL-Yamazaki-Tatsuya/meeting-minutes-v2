@@ -27,6 +27,8 @@ export class ComputeStack extends cdk.Stack {
   public readonly uploadHandler: lambda.Function;
   public readonly transcribeTrigger: lambda.Function;
   public readonly checkTranscribeStatus: lambda.Function;
+  public readonly getJobStatusHandler: lambda.Function;
+  public readonly listJobsHandler: lambda.Function;
   public readonly stateMachine: sfn.StateMachine;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
@@ -172,6 +174,34 @@ export class ComputeStack extends cdk.Stack {
       description: 'Transcribeジョブのステータスをポーリングし、DynamoDBを更新する',
     });
 
+    // Get Job Status Lambda
+    this.getJobStatusHandler = new lambda.Function(this, 'GetJobStatusHandler', {
+      functionName: `${appName}-get-job-status-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/get-job-status')),
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: '指定されたジョブIDのステータス情報を取得する',
+    });
+
+    // List Jobs Lambda
+    this.listJobsHandler = new lambda.Function(this, 'ListJobsHandler', {
+      functionName: `${appName}-list-jobs-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/list-jobs')),
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: 'ユーザーのジョブ一覧を取得する',
+    });
+
     // Step Functions ワークフロー定義
     this.stateMachine = this.createStateMachine(appName, environment);
 
@@ -244,6 +274,26 @@ export class ComputeStack extends cdk.Stack {
       }
     );
 
+    // /api/jobs リソース
+    const jobsResource = apiResource.addResource('jobs');
+
+    // GET /api/jobs エンドポイント - ジョブ一覧取得
+    jobsResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(this.listJobsHandler, {
+        proxy: true,
+      })
+    );
+
+    // GET /api/jobs/{jobId} エンドポイント - ジョブステータス取得
+    const jobIdResource = jobsResource.addResource('{jobId}');
+    jobIdResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(this.getJobStatusHandler, {
+        proxy: true,
+      })
+    );
+
     // CloudFormation Outputs
     new cdk.CfnOutput(this, 'LambdaExecutionRoleArn', {
       value: this.lambdaExecutionRole.roleArn,
@@ -285,6 +335,18 @@ export class ComputeStack extends cdk.Stack {
       value: this.checkTranscribeStatus.functionArn,
       description: 'Check Transcribe Status Lambda ARN',
       exportName: `${appName}-check-transcribe-status-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'GetJobStatusHandlerArn', {
+      value: this.getJobStatusHandler.functionArn,
+      description: 'Get Job Status Lambda ARN',
+      exportName: `${appName}-get-job-status-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'ListJobsHandlerArn', {
+      value: this.listJobsHandler.functionArn,
+      description: 'List Jobs Lambda ARN',
+      exportName: `${appName}-list-jobs-arn-${environment}`,
     });
 
     new cdk.CfnOutput(this, 'StateMachineArn', {

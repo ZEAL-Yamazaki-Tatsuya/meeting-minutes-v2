@@ -17,7 +17,9 @@ Write-Host "Lambda関数をdistディレクトリにコピーしています..."
 $lambdaFunctions = @(
     "upload-handler",
     "transcribe-trigger",
-    "check-transcribe-status"
+    "check-transcribe-status",
+    "get-job-status",
+    "list-jobs"
 )
 
 foreach ($func in $lambdaFunctions) {
