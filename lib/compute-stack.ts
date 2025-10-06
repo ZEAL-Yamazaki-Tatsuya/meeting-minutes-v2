@@ -5,6 +5,8 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -25,6 +27,7 @@ export class ComputeStack extends cdk.Stack {
   public readonly uploadHandler: lambda.Function;
   public readonly transcribeTrigger: lambda.Function;
   public readonly checkTranscribeStatus: lambda.Function;
+  public readonly stateMachine: sfn.StateMachine;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
     super(scope, id, props);
@@ -75,6 +78,8 @@ export class ComputeStack extends cdk.Stack {
       })
     );
 
+
+
     // IAM Role for AWS Transcribe
     this.transcribeRole = new iam.Role(this, 'TranscribeRole', {
       roleName: `${appName}-transcribe-role-${environment}`,
@@ -115,7 +120,7 @@ export class ComputeStack extends cdk.Stack {
       })
     );
 
-    // Lambda環境変数の共通設定
+    // Lambda環境変数の共通設定（STATE_MACHINE_ARNは後で追加）
     const lambdaEnvironment = {
       ENVIRONMENT: environment,
       INPUT_BUCKET_NAME: inputBucket.bucketName,
@@ -166,6 +171,23 @@ export class ComputeStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'Transcribeジョブのステータスをポーリングし、DynamoDBを更新する',
     });
+
+    // Step Functions ワークフロー定義
+    this.stateMachine = this.createStateMachine(appName, environment);
+
+    // Upload HandlerにStep Functions ARNを環境変数として追加
+    // 注: 循環依存を避けるため、ARNを直接構築する
+    const stateMachineArn = `arn:aws:states:${this.region}:${this.account}:stateMachine:${appName}-workflow-${environment}`;
+    this.uploadHandler.addEnvironment('STATE_MACHINE_ARN', stateMachineArn);
+
+    // Upload HandlerにStep Functionsの実行権限を付与
+    this.uploadHandler.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['states:StartExecution'],
+        resources: [stateMachineArn],
+      })
+    );
 
     // API Gateway
     this.api = new apigateway.RestApi(this, 'MeetingMinutesApi', {
@@ -264,5 +286,119 @@ export class ComputeStack extends cdk.Stack {
       description: 'Check Transcribe Status Lambda ARN',
       exportName: `${appName}-check-transcribe-status-arn-${environment}`,
     });
+
+    new cdk.CfnOutput(this, 'StateMachineArn', {
+      value: this.stateMachine.stateMachineArn,
+      description: 'Step Functions State Machine ARN',
+      exportName: `${appName}-state-machine-arn-${environment}`,
+    });
+  }
+
+  /**
+   * Step Functionsステートマシンを作成
+   */
+  private createStateMachine(appName: string, environment: string): sfn.StateMachine {
+    // CloudWatch Logsロググループ
+    const logGroup = new logs.LogGroup(this, 'StateMachineLogGroup', {
+      logGroupName: `/aws/vendedlogs/states/${appName}-workflow-${environment}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // 1. TranscribeVideo ステート - Transcribeジョブを開始
+    const transcribeVideoTask = new tasks.LambdaInvoke(this, 'TranscribeVideo', {
+      lambdaFunction: this.transcribeTrigger,
+      outputPath: '$.Payload',
+      retryOnServiceExceptions: true,
+      comment: 'AWS Transcribeジョブを開始し、話者識別を有効化する',
+    });
+
+    // 2. WaitForTranscription ステート - 30秒待機
+    const waitForTranscription = new sfn.Wait(this, 'WaitForTranscription', {
+      time: sfn.WaitTime.duration(cdk.Duration.seconds(30)),
+      comment: 'Transcribeジョブの完了を待つ（30秒）',
+    });
+
+    // 3. CheckTranscriptionStatus ステート - Transcribeステータスを確認
+    const checkTranscriptionStatusTask = new tasks.LambdaInvoke(
+      this,
+      'CheckTranscriptionStatus',
+      {
+        lambdaFunction: this.checkTranscribeStatus,
+        outputPath: '$.Payload',
+        retryOnServiceExceptions: true,
+        comment: 'Transcribeジョブのステータスをポーリングし、DynamoDBを更新する',
+      }
+    );
+
+    // 4. IsTranscriptionComplete ステート - 完了判定
+    const isTranscriptionComplete = new sfn.Choice(this, 'IsTranscriptionComplete', {
+      comment: 'Transcribeジョブが完了したかどうかを判定',
+    });
+
+    // 5. TranscriptionFailed ステート - 失敗時の処理
+    const transcriptionFailed = new sfn.Fail(this, 'TranscriptionFailed', {
+      error: 'TranscriptionJobFailed',
+      cause: 'AWS Transcribeジョブが失敗しました',
+    });
+
+    // 6. GenerateMinutes ステート - 議事録生成（将来実装）
+    // TODO: Task 6で実装予定
+    const generateMinutesPlaceholder = new sfn.Pass(this, 'GenerateMinutes', {
+      comment: '議事録生成処理（将来実装予定）',
+      result: sfn.Result.fromObject({
+        message: '議事録生成は今後実装されます',
+      }),
+    });
+
+    // 7. Success ステート - 成功
+    const successState = new sfn.Succeed(this, 'Success', {
+      comment: 'ワークフロー正常完了',
+    });
+
+    // エラーハンドリングの設定
+    transcribeVideoTask.addCatch(transcriptionFailed, {
+      errors: ['States.ALL'],
+      resultPath: '$.error',
+    });
+
+    checkTranscriptionStatusTask.addCatch(transcriptionFailed, {
+      errors: ['States.ALL'],
+      resultPath: '$.error',
+    });
+
+    // ワークフローの定義
+    const definition = transcribeVideoTask
+      .next(waitForTranscription)
+      .next(checkTranscriptionStatusTask)
+      .next(
+        isTranscriptionComplete
+          .when(
+            sfn.Condition.stringEquals('$.status', 'FAILED'),
+            transcriptionFailed
+          )
+          .when(
+            sfn.Condition.booleanEquals('$.isComplete', true),
+            generateMinutesPlaceholder.next(successState)
+          )
+          .otherwise(waitForTranscription)
+      );
+
+    // ステートマシンの作成
+    const stateMachine = new sfn.StateMachine(this, 'MeetingMinutesWorkflow', {
+      stateMachineName: `${appName}-workflow-${environment}`,
+      definition,
+      role: this.stepFunctionsRole,
+      timeout: cdk.Duration.hours(2),
+      comment: '会議録画から議事録を生成するワークフロー',
+      logs: {
+        destination: logGroup,
+        level: sfn.LogLevel.ALL,
+        includeExecutionData: true,
+      },
+      tracingEnabled: true,
+    });
+
+    return stateMachine;
   }
 }

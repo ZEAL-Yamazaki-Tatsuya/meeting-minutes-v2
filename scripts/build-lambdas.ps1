@@ -15,7 +15,9 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Lambda関数をdistディレクトリにコピーしています..." -ForegroundColor Yellow
 
 $lambdaFunctions = @(
-    "upload-handler"
+    "upload-handler",
+    "transcribe-trigger",
+    "check-transcribe-status"
 )
 
 foreach ($func in $lambdaFunctions) {

@@ -79,7 +79,12 @@
     - ユニットテストを作成する
     - _Requirements: 1.3, 6.4_
 
-- [ ] 5. Step Functionsワークフローの実装
+- [x] 5. Step Functionsワークフローの実装
+
+
+
+
+
   - ワークフローのステートマシン定義をCDKで作成する
   - TranscribeVideo、WaitForTranscription、CheckTranscriptionStatus、GenerateMinutesの各ステートを定義する
   - エラーハンドリングとリトライポリシーを設定する
