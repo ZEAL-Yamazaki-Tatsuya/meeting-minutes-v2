@@ -1,176 +1,178 @@
 # Meeting Minutes Generator
 
-Automated meeting minutes generator from MP4 files using AWS services.
+MP4ファイルからAWSサービスを使用して自動的に議事録を生成するアプリケーション。
 
-## Architecture
+## アーキテクチャ
 
-This application uses a serverless architecture on AWS:
+このアプリケーションはAWS上のサーバーレスアーキテクチャを使用しています:
 
-- **Frontend**: Next.js 14 (React) with TypeScript
-- **Backend**: AWS Lambda functions
-- **Storage**: S3 (videos and documents), DynamoDB (job metadata)
-- **Processing**: AWS Transcribe (speech-to-text), Amazon Bedrock (LLM for minutes generation)
-- **Orchestration**: AWS Step Functions
+- **フロントエンド**: Next.js 14 (React) with TypeScript
+- **バックエンド**: AWS Lambda関数
+- **ストレージ**: S3（動画とドキュメント）、DynamoDB（ジョブメタデータ）
+- **処理**: AWS Transcribe（音声テキスト変換）、Amazon Bedrock（議事録生成用LLM）
+- **オーケストレーション**: AWS Step Functions
 - **API**: API Gateway
 
-## Prerequisites
+## 前提条件
 
-- Node.js 18+ and npm
-- AWS CLI configured with appropriate credentials
-- AWS CDK CLI (`npm install -g aws-cdk`)
-- An AWS account with permissions to create resources
+- Node.js 18+とnpm
+- 適切な認証情報で設定されたAWS CLI
+- AWS CDK CLI（`npm install -g aws-cdk`）
+- リソースを作成する権限を持つAWSアカウント
 
-## Setup
+## セットアップ
 
-### 1. Install Dependencies
+### 1. 依存関係のインストール
 
 ```bash
 npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. 環境変数の設定
 
-Copy the example environment file and update with your values:
+サンプル環境ファイルをコピーして、値を更新します:
 
 ```bash
 copy .env.example .env
 ```
 
-Edit `.env` and set:
-- `AWS_ACCOUNT_ID`: Your AWS account ID
-- `AWS_REGION`: Your preferred AWS region (e.g., us-east-1)
-- `ENVIRONMENT`: Environment name (dev, staging, prod)
-- Other configuration values as needed
+`.env`を編集して以下を設定:
+- `AWS_ACCOUNT_ID`: AWSアカウントID
+- `AWS_REGION`: 希望するAWSリージョン（例: us-east-1）
+- `ENVIRONMENT`: 環境名（dev、staging、prod）
+- 必要に応じてその他の設定値
 
-### 3. Bootstrap CDK (First Time Only)
+### 3. CDKのブートストラップ（初回のみ）
 
-If this is your first time using CDK in this AWS account/region:
+このAWSアカウント/リージョンでCDKを初めて使用する場合:
 
 ```bash
 cdk bootstrap aws://ACCOUNT-ID/REGION
 ```
 
-### 4. Build the Project
+### 4. プロジェクトのビルド
 
 ```bash
 npm run build
 ```
 
-### 5. Deploy Infrastructure
+### 5. インフラストラクチャのデプロイ
 
-Deploy all stacks:
+すべてのスタックをデプロイ:
 
 ```bash
 npm run deploy
 ```
 
-Or deploy specific stacks:
+または特定のスタックをデプロイ:
 
 ```bash
 cdk deploy meeting-minutes-generator-storage-dev
 cdk deploy meeting-minutes-generator-compute-dev
 ```
 
-## Project Structure
+## プロジェクト構造
 
 ```
 .
 ├── bin/
-│   └── meeting-minutes-app.ts      # CDK app entry point
+│   └── meeting-minutes-app.ts      # CDKアプリエントリーポイント
 ├── lib/
-│   ├── storage-stack.ts            # S3 and DynamoDB resources
-│   ├── compute-stack.ts            # Lambda and IAM roles
-│   └── config.ts                   # Configuration management
-├── lambda/                         # Lambda function code (to be added)
-├── frontend/                       # Next.js frontend (to be added)
-├── test/                          # Test files
-├── cdk.json                       # CDK configuration
-├── tsconfig.json                  # TypeScript configuration
-├── package.json                   # Dependencies
-└── .env                          # Environment variables (not in git)
+│   ├── storage-stack.ts            # S3とDynamoDBリソース
+│   ├── compute-stack.ts            # LambdaとIAMロール
+│   └── config.ts                   # 設定管理
+├── src/
+│   ├── lambdas/                    # Lambda関数コード
+│   └── utils/                      # ユーティリティ関数
+├── frontend/                       # Next.jsフロントエンド（追加予定）
+├── test/                          # テストファイル
+├── cdk.json                       # CDK設定
+├── tsconfig.json                  # TypeScript設定
+├── package.json                   # 依存関係
+└── .env                          # 環境変数（gitには含まれません）
 ```
 
-## Available Scripts
+## 利用可能なスクリプト
 
-- `npm run build` - Compile TypeScript
-- `npm run watch` - Watch mode for development
-- `npm test` - Run tests
-- `npm run cdk` - Run CDK CLI commands
-- `npm run deploy` - Deploy all stacks
-- `npm run synth` - Synthesize CloudFormation templates
+- `npm run build` - TypeScriptをコンパイル
+- `npm run watch` - 開発用ウォッチモード
+- `npm test` - テストを実行
+- `npm run cdk` - CDK CLIコマンドを実行
+- `npm run deploy` - すべてのスタックをデプロイ
+- `npm run synth` - CloudFormationテンプレートを合成
 
-## CDK Stacks
+## CDKスタック
 
-### Storage Stack
+### ストレージスタック
 
-Creates:
-- S3 bucket for input videos (with lifecycle rules)
-- S3 bucket for output documents (with versioning)
-- DynamoDB table for job metadata (with GSI)
+作成されるもの:
+- 入力動画用S3バケット（ライフサイクルルール付き）
+- 出力ドキュメント用S3バケット（バージョニング付き）
+- ジョブメタデータ用DynamoDBテーブル（GSI付き）
 
-### Compute Stack
+### コンピュートスタック
 
-Creates:
-- IAM roles for Lambda functions
-- IAM role for AWS Transcribe
-- IAM role for Step Functions
-- Permissions for Bedrock access
+作成されるもの:
+- Lambda関数用IAMロール
+- AWS Transcribe用IAMロール
+- Step Functions用IAMロール
+- Bedrockアクセス権限
 
-## Development Workflow
+## 開発ワークフロー
 
-1. Make changes to infrastructure code in `lib/`
-2. Build: `npm run build`
-3. Review changes: `cdk diff`
-4. Deploy: `cdk deploy`
+1. `lib/`のインフラストラクチャコードを変更
+2. ビルド: `npm run build`
+3. 変更を確認: `cdk diff`
+4. デプロイ: `cdk deploy`
 
-## Testing
+## テスト
 
-Run unit tests:
+ユニットテストの実行:
 
 ```bash
 npm test
 ```
 
-Run tests in watch mode:
+ウォッチモードでテストを実行:
 
 ```bash
 npm test -- --watch
 ```
 
-## Cleanup
+## クリーンアップ
 
-To remove all deployed resources:
+デプロイされたすべてのリソースを削除するには:
 
 ```bash
 cdk destroy --all
 ```
 
-**Warning**: This will delete all resources including S3 buckets and DynamoDB tables (if not in production).
+**警告**: これによりS3バケットとDynamoDBテーブルを含むすべてのリソースが削除されます（本番環境でない場合）。
 
-## Security
+## セキュリティ
 
-- All S3 buckets use server-side encryption
-- S3 buckets block all public access
-- DynamoDB uses AWS-managed encryption
-- IAM roles follow least privilege principle
-- CORS is configured for frontend access
+- すべてのS3バケットでサーバーサイド暗号化を使用
+- S3バケットはすべてのパブリックアクセスをブロック
+- DynamoDBはAWS管理暗号化を使用
+- IAMロールは最小権限の原則に従う
+- フロントエンドアクセス用にCORSを設定
 
-## Cost Optimization
+## コスト最適化
 
-- S3 lifecycle rules move old files to cheaper storage
-- DynamoDB uses on-demand billing
-- Lambda functions are serverless (pay per use)
-- CloudWatch logs have retention policies
+- S3ライフサイクルルールで古いファイルを安価なストレージに移動
+- DynamoDBはオンデマンド課金を使用
+- Lambda関数はサーバーレス（使用量に応じた支払い）
+- CloudWatchログには保持ポリシーあり
 
-## Next Steps
+## 次のステップ
 
-1. Implement Lambda functions (Task 2-8)
-2. Create Step Functions workflow (Task 5)
-3. Build frontend application (Task 9-13)
-4. Add authentication (Task 14)
-5. Set up monitoring and alerts (Task 19)
-6. Create deployment pipeline (Task 18)
+1. Lambda関数の実装（タスク2-8）
+2. Step Functionsワークフローの作成（タスク5）
+3. フロントエンドアプリケーションの構築（タスク9-13）
+4. 認証の追加（タスク14）
+5. モニタリングとアラートの設定（タスク19）
+6. デプロイメントパイプラインの作成（タスク18）
 
-## License
+## ライセンス
 
 MIT

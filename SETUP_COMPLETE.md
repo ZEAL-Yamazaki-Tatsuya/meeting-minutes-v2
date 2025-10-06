@@ -1,237 +1,237 @@
-# Task 1 Complete: Project Structure and Infrastructure Setup
+# タスク1完了: プロジェクト構造とインフラストラクチャのセットアップ
 
-## ✅ What Was Implemented
+## ✅ 実装内容
 
-### 1. AWS CDK Project Initialization
-- Created CDK app with TypeScript configuration
-- Set up proper TypeScript compiler options
-- Configured CDK context and feature flags
+### 1. AWS CDKプロジェクトの初期化
+- TypeScript設定でCDKアプリを作成
+- 適切なTypeScriptコンパイラオプションを設定
+- CDKコンテキストと機能フラグを設定
 
-### 2. Infrastructure Stacks
+### 2. インフラストラクチャスタック
 
-#### Storage Stack (`lib/storage-stack.ts`)
-- **S3 Input Bucket**: For uploaded MP4 files
-  - Server-side encryption (SSE-S3)
-  - 30-day lifecycle policy
-  - CORS enabled for direct uploads
-  - Block all public access
+#### ストレージスタック (`lib/storage-stack.ts`)
+- **S3入力バケット**: アップロードされたMP4ファイル用
+  - サーバーサイド暗号化（SSE-S3）
+  - 30日ライフサイクルポリシー
+  - 直接アップロード用のCORS有効化
+  - すべてのパブリックアクセスをブロック
   
-- **S3 Output Bucket**: For transcripts and minutes
-  - Server-side encryption (SSE-S3)
-  - Versioning enabled
-  - Transition to IA after 90 days
-  - Block all public access
+- **S3出力バケット**: 文字起こし結果と議事録用
+  - サーバーサイド暗号化（SSE-S3）
+  - バージョニング有効
+  - 90日後にIAに移行
+  - すべてのパブリックアクセスをブロック
 
-- **DynamoDB Table**: For job metadata
-  - Partition key: `jobId`
-  - Sort key: `userId`
+- **DynamoDBテーブル**: ジョブメタデータ用
+  - パーティションキー: `jobId`
+  - ソートキー: `userId`
   - GSI: `userId-createdAt-index`
-  - On-demand billing
-  - AWS-managed encryption
+  - オンデマンド課金
+  - AWS管理暗号化
 
-#### Compute Stack (`lib/compute-stack.ts`)
-- **Lambda Execution Role**: With permissions for:
-  - S3 read/write
-  - DynamoDB read/write
-  - AWS Transcribe operations
-  - Amazon Bedrock model invocation
+#### コンピュートスタック (`lib/compute-stack.ts`)
+- **Lambda実行ロール**: 以下の権限を持つ:
+  - S3読み書き
+  - DynamoDB読み書き
+  - AWS Transcribe操作
+  - Amazon Bedrockモデル呼び出し
   - CloudWatch Logs
 
-- **Transcribe Role**: For AWS Transcribe service
-  - S3 read from input bucket
-  - S3 write to output bucket
+- **Transcribeロール**: AWS Transcribeサービス用
+  - 入力バケットからのS3読み取り
+  - 出力バケットへのS3書き込み
 
-- **Step Functions Role**: For workflow orchestration
-  - Lambda function invocation
+- **Step Functionsロール**: ワークフローオーケストレーション用
+  - Lambda関数呼び出し
   - CloudWatch Logs
 
-### 3. Configuration Management
+### 3. 設定管理
 
-#### Environment Variables (`.env.example`)
-- AWS account and region configuration
-- Application settings
-- S3 bucket names
-- DynamoDB table names
-- Transcribe and Bedrock configuration
-- File upload limits
-- API and CORS settings
+#### 環境変数 (`.env.example`)
+- AWSアカウントとリージョン設定
+- アプリケーション設定
+- S3バケット名
+- DynamoDBテーブル名
+- TranscribeとBedrock設定
+- ファイルアップロード制限
+- APIとCORS設定
 
-#### Config Module (`lib/config.ts`)
-- Type-safe configuration loading
-- Environment variable validation
-- Lambda environment variable generation
-- Default values for optional settings
+#### 設定モジュール (`lib/config.ts`)
+- 型安全な設定読み込み
+- 環境変数の検証
+- Lambda環境変数の生成
+- オプション設定のデフォルト値
 
-### 4. Project Structure
+### 4. プロジェクト構造
 ```
 meeting-minutes-generator/
 ├── bin/
-│   └── meeting-minutes-app.ts      # CDK app entry point
+│   └── meeting-minutes-app.ts      # CDKアプリエントリーポイント
 ├── lib/
-│   ├── storage-stack.ts            # S3 and DynamoDB
-│   ├── compute-stack.ts            # IAM roles
-│   └── config.ts                   # Configuration management
+│   ├── storage-stack.ts            # S3とDynamoDB
+│   ├── compute-stack.ts            # IAMロール
+│   └── config.ts                   # 設定管理
 ├── scripts/
-│   ├── setup.ps1                   # Windows setup script
-│   ├── setup.sh                    # Unix setup script
-│   └── validate.ps1                # Validation script
+│   ├── setup.ps1                   # Windowsセットアップスクリプト
+│   ├── setup.sh                    # Unixセットアップスクリプト
+│   └── validate.ps1                # 検証スクリプト
 ├── test/
-│   ├── storage-stack.test.ts       # Storage stack tests
-│   └── compute-stack.test.ts       # Compute stack tests
-├── .env.example                    # Environment template
-├── .gitignore                      # Git ignore rules
-├── cdk.json                        # CDK configuration
-├── tsconfig.json                   # TypeScript config
-├── package.json                    # Dependencies
-├── jest.config.js                  # Test configuration
-├── README.md                       # Project documentation
-├── DEPLOYMENT.md                   # Deployment guide
-└── ARCHITECTURE.md                 # Architecture docs
+│   ├── storage-stack.test.ts       # ストレージスタックテスト
+│   └── compute-stack.test.ts       # コンピュートスタックテスト
+├── .env.example                    # 環境変数テンプレート
+├── .gitignore                      # Git除外ルール
+├── cdk.json                        # CDK設定
+├── tsconfig.json                   # TypeScript設定
+├── package.json                    # 依存関係
+├── jest.config.js                  # テスト設定
+├── README.md                       # プロジェクトドキュメント
+├── DEPLOYMENT.md                   # デプロイメントガイド
+└── ARCHITECTURE.md                 # アーキテクチャドキュメント
 ```
 
-### 5. Testing Infrastructure
-- Jest configuration for unit tests
-- Test files for both stacks
-- Coverage reporting setup
-- Mock AWS resources for testing
+### 5. テストインフラストラクチャ
+- ユニットテスト用のJest設定
+- 両スタックのテストファイル
+- カバレッジレポート設定
+- テスト用のAWSリソースモック
 
-### 6. Documentation
-- **README.md**: Project overview and quick start
-- **DEPLOYMENT.md**: Detailed deployment instructions
-- **ARCHITECTURE.md**: System architecture documentation
-- **Setup scripts**: Automated setup for Windows and Unix
+### 6. ドキュメント
+- **README.md**: プロジェクト概要とクイックスタート
+- **DEPLOYMENT.md**: 詳細なデプロイメント手順
+- **ARCHITECTURE.md**: システムアーキテクチャドキュメント
+- **セットアップスクリプト**: WindowsとUnix用の自動セットアップ
 
-### 7. Development Tools
-- TypeScript strict mode enabled
-- ESM and CommonJS compatibility
-- Source map support
-- Watch mode for development
+### 7. 開発ツール
+- TypeScript strictモード有効
+- ESMとCommonJSの互換性
+- ソースマップサポート
+- 開発用のウォッチモード
 
-## 📋 Requirements Satisfied
+## 📋 満たされた要件
 
-✅ **Requirement 3.1**: AWS environment deployment
-- CDK infrastructure as code
-- Proper AWS service configuration
-- Security best practices
+✅ **要件3.1**: AWS環境でのデプロイ
+- CDK Infrastructure as Code
+- 適切なAWSサービス設定
+- セキュリティベストプラクティス
 
-✅ **Requirement 3.2**: S3 and DynamoDB setup
-- Input and output S3 buckets
-- DynamoDB table with proper schema
-- Encryption and access controls
+✅ **要件3.2**: S3とDynamoDBのセットアップ
+- 入力および出力S3バケット
+- 適切なスキーマを持つDynamoDBテーブル
+- 暗号化とアクセス制御
 
-## 🚀 Next Steps
+## 🚀 次のステップ
 
-To use this infrastructure:
+このインフラストラクチャを使用するには:
 
-1. **Install dependencies**:
+1. **依存関係のインストール**:
    ```bash
    npm install
    ```
 
-2. **Configure environment**:
+2. **環境の設定**:
    ```bash
    copy .env.example .env
-   # Edit .env with your AWS account details
+   # AWSアカウント詳細で.envを編集
    ```
 
-3. **Build the project**:
+3. **プロジェクトのビルド**:
    ```bash
    npm run build
    ```
 
-4. **Bootstrap CDK** (first time only):
+4. **CDKのブートストラップ**（初回のみ）:
    ```bash
    cdk bootstrap aws://ACCOUNT-ID/REGION
    ```
 
-5. **Deploy infrastructure**:
+5. **インフラストラクチャのデプロイ**:
    ```bash
    cdk deploy --all
    ```
 
-6. **Verify deployment**:
+6. **デプロイの検証**:
    ```bash
    aws s3 ls | grep meeting-minutes
    aws dynamodb list-tables | grep meeting-minutes
    ```
 
-## 📦 Created Resources
+## 📦 作成されるリソース
 
-After deployment, you'll have:
+デプロイ後、以下が作成されます:
 
-### S3 Buckets
+### S3バケット
 - `meeting-minutes-generator-input-{env}-{account-id}`
 - `meeting-minutes-generator-output-{env}-{account-id}`
 
-### DynamoDB Table
+### DynamoDBテーブル
 - `meeting-minutes-generator-jobs-{env}`
 
-### IAM Roles
+### IAMロール
 - `meeting-minutes-generator-lambda-role-{env}`
 - `meeting-minutes-generator-transcribe-role-{env}`
 - `meeting-minutes-generator-stepfunctions-role-{env}`
 
-## 🔧 Configuration Options
+## 🔧 設定オプション
 
-The infrastructure supports:
-- Multiple environments (dev, staging, prod)
-- Custom bucket names
-- Configurable lifecycle policies
-- Optional Cognito authentication
-- Adjustable file size limits
-- Custom CORS origins
+インフラストラクチャは以下をサポート:
+- 複数環境（dev、staging、prod）
+- カスタムバケット名
+- 設定可能なライフサイクルポリシー
+- オプションのCognito認証
+- 調整可能なファイルサイズ制限
+- カスタムCORSオリジン
 
-## 🧪 Testing
+## 🧪 テスト
 
-Run tests:
+テストの実行:
 ```bash
 npm test
 ```
 
-Run tests with coverage:
+カバレッジ付きテストの実行:
 ```bash
 npm test -- --coverage
 ```
 
-## 📊 Cost Estimate
+## 📊 コスト見積もり
 
-For development environment with minimal usage:
-- S3: ~$1/month
-- DynamoDB: ~$1/month
-- CloudWatch: ~$1/month
-- **Total**: ~$3/month (excluding Lambda, Transcribe, and Bedrock usage)
+最小使用量の開発環境の場合:
+- S3: 月額約$1
+- DynamoDB: 月額約$1
+- CloudWatch: 月額約$1
+- **合計**: 月額約$3（Lambda、Transcribe、Bedrockの使用量を除く）
 
-## 🔐 Security Features
+## 🔐 セキュリティ機能
 
-- All S3 buckets encrypted at rest
-- Block all public access on S3
-- DynamoDB encryption enabled
-- IAM roles follow least privilege
-- No hardcoded credentials
-- CORS properly configured
+- すべてのS3バケットが保存時に暗号化
+- S3ですべてのパブリックアクセスをブロック
+- DynamoDB暗号化有効
+- IAMロールは最小権限に従う
+- ハードコードされた認証情報なし
+- CORSが適切に設定
 
-## 📝 Notes
+## 📝 注意事項
 
-- Production deployments retain resources on stack deletion
-- Development deployments auto-delete resources for easy cleanup
-- All resources are tagged with Application, Environment, and ManagedBy
-- CloudFormation outputs provide resource names and ARNs
+- 本番環境デプロイはスタック削除時にリソースを保持
+- 開発環境デプロイは簡単なクリーンアップのためリソースを自動削除
+- すべてのリソースにApplication、Environment、ManagedByのタグ付け
+- CloudFormation出力でリソース名とARNを提供
 
-## 🎯 Ready for Next Task
+## 🎯 次のタスクの準備完了
 
-The infrastructure is now ready for:
-- Task 2: DynamoDB data models and access layer
-- Task 3: File upload Lambda function
-- Task 4: AWS Transcribe integration
-- And subsequent tasks...
+インフラストラクチャは以下の準備が整いました:
+- タスク2: DynamoDBデータモデルとアクセスレイヤー
+- タスク3: ファイルアップロードLambda関数
+- タスク4: AWS Transcribe統合
+- 以降のタスク...
 
-## 🆘 Troubleshooting
+## 🆘 トラブルシューティング
 
-If you encounter issues:
+問題が発生した場合:
 
-1. **CDK Bootstrap Error**: Run `cdk bootstrap --force`
-2. **Permission Error**: Check AWS credentials and IAM permissions
-3. **Build Error**: Ensure Node.js 18+ is installed
-4. **Deployment Error**: Check CloudFormation events in AWS Console
+1. **CDKブートストラップエラー**: `cdk bootstrap --force`を実行
+2. **権限エラー**: AWS認証情報とIAM権限を確認
+3. **ビルドエラー**: Node.js 18+がインストールされていることを確認
+4. **デプロイエラー**: AWSコンソールでCloudFormationイベントを確認
 
-For more help, see DEPLOYMENT.md or check CloudWatch Logs.
+詳細については、DEPLOYMENT.mdを参照するか、CloudWatch Logsを確認してください。
