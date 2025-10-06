@@ -84,7 +84,11 @@ cdk deploy meeting-minutes-generator-compute-dev
 ├── src/
 │   ├── lambdas/                    # Lambda関数コード
 │   └── utils/                      # ユーティリティ関数
-├── frontend/                       # Next.jsフロントエンド（追加予定）
+├── frontend/                       # Next.jsフロントエンド
+│   ├── app/                        # Next.js App Router
+│   ├── lib/                        # API通信とユーティリティ
+│   ├── types/                      # TypeScript型定義
+│   └── package.json                # フロントエンド依存関係
 ├── test/                          # テストファイル
 ├── cdk.json                       # CDK設定
 ├── tsconfig.json                  # TypeScript設定
@@ -164,14 +168,53 @@ cdk destroy --all
 - Lambda関数はサーバーレス（使用量に応じた支払い）
 - CloudWatchログには保持ポリシーあり
 
+## フロントエンド開発
+
+フロントエンドはNext.js 14を使用して実装されています。
+
+### フロントエンドのセットアップ
+
+```bash
+cd frontend
+npm install
+```
+
+### 環境変数の設定
+
+`frontend/.env.local`を作成して以下を設定:
+
+```env
+NEXT_PUBLIC_API_URL=https://your-api-gateway-url.execute-api.ap-northeast-1.amazonaws.com/prod
+NEXT_PUBLIC_APP_NAME=Meeting Minutes Generator
+```
+
+### 開発サーバーの起動
+
+```bash
+cd frontend
+npm run dev
+```
+
+ブラウザで [http://localhost:3000](http://localhost:3000) を開いてアクセスできます。
+
+### フロントエンドのビルド
+
+```bash
+cd frontend
+npm run build
+```
+
+詳細は`frontend/README.md`と`frontend/SETUP.md`を参照してください。
+
 ## 次のステップ
 
-1. Lambda関数の実装（タスク2-8）
-2. Step Functionsワークフローの作成（タスク5）
-3. フロントエンドアプリケーションの構築（タスク9-13）
-4. 認証の追加（タスク14）
-5. モニタリングとアラートの設定（タスク19）
-6. デプロイメントパイプラインの作成（タスク18）
+1. ✅ Lambda関数の実装（タスク2-8）- 完了
+2. ✅ Step Functionsワークフローの作成（タスク5）- 完了
+3. ✅ フロントエンドプロジェクトのセットアップ（タスク9）- 完了
+4. フロントエンドUIの実装（タスク10-13）
+5. 認証の追加（タスク14）
+6. モニタリングとアラートの設定（タスク19）
+7. デプロイメントパイプラインの作成（タスク18）
 
 ## ライセンス
 
