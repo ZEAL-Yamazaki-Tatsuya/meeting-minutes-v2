@@ -23,6 +23,8 @@ export class ComputeStack extends cdk.Stack {
   public readonly stepFunctionsRole: iam.Role;
   public readonly api: apigateway.RestApi;
   public readonly uploadHandler: lambda.Function;
+  public readonly transcribeTrigger: lambda.Function;
+  public readonly checkTranscribeStatus: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
     super(scope, id, props);
@@ -137,6 +139,34 @@ export class ComputeStack extends cdk.Stack {
       description: 'Presigned URLを生成し、ジョブレコードを作成する',
     });
 
+    // Transcribe Trigger Lambda
+    this.transcribeTrigger = new lambda.Function(this, 'TranscribeTrigger', {
+      functionName: `${appName}-transcribe-trigger-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/transcribe-trigger')),
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(60),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: 'AWS Transcribeジョブを開始し、話者識別を有効化する',
+    });
+
+    // Check Transcribe Status Lambda
+    this.checkTranscribeStatus = new lambda.Function(this, 'CheckTranscribeStatus', {
+      functionName: `${appName}-check-transcribe-status-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/check-transcribe-status')),
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: 'Transcribeジョブのステータスをポーリングし、DynamoDBを更新する',
+    });
+
     // API Gateway
     this.api = new apigateway.RestApi(this, 'MeetingMinutesApi', {
       restApiName: `${appName}-api-${environment}`,
@@ -221,6 +251,18 @@ export class ComputeStack extends cdk.Stack {
       value: this.uploadHandler.functionArn,
       description: 'Upload Handler Lambda ARN',
       exportName: `${appName}-upload-handler-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'TranscribeTriggerArn', {
+      value: this.transcribeTrigger.functionArn,
+      description: 'Transcribe Trigger Lambda ARN',
+      exportName: `${appName}-transcribe-trigger-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'CheckTranscribeStatusArn', {
+      value: this.checkTranscribeStatus.functionArn,
+      description: 'Check Transcribe Status Lambda ARN',
+      exportName: `${appName}-check-transcribe-status-arn-${environment}`,
     });
   }
 }

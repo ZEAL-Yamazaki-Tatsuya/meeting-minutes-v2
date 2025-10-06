@@ -55,8 +55,14 @@
     - Lambda統合を設定する
     - _Requirements: 3.1_
 
-- [ ] 4. AWS Transcribe統合の実装
-  - [ ] 4.1 Transcribe起動Lambda関数を作成する
+- [x] 4. AWS Transcribe統合の実装
+
+
+
+
+  - [x] 4.1 Transcribe起動Lambda関数を作成する
+
+
     - AWS Transcribeジョブを開始するロジックを実装する
     - 話者識別（Speaker Diarization）を有効化する
     - ジョブ名とS3パスを適切に設定する
@@ -64,7 +70,9 @@
     - ユニットテストを作成する
     - _Requirements: 1.2, 1.5, 3.3_
   
-  - [ ] 4.2 Transcribeステータス確認Lambda関数を作成する
+
+  - [x] 4.2 Transcribeステータス確認Lambda関数を作成する
+
     - Transcribeジョブのステータスをポーリングするロジックを実装する
     - 完了、失敗、進行中の各状態を処理する
     - DynamoDBのステータスを更新する
