@@ -29,6 +29,8 @@ export class ComputeStack extends cdk.Stack {
   public readonly checkTranscribeStatus: lambda.Function;
   public readonly getJobStatusHandler: lambda.Function;
   public readonly listJobsHandler: lambda.Function;
+  public readonly getMinutesHandler: lambda.Function;
+  public readonly downloadMinutesHandler: lambda.Function;
   public readonly stateMachine: sfn.StateMachine;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
@@ -202,6 +204,34 @@ export class ComputeStack extends cdk.Stack {
       description: 'ユーザーのジョブ一覧を取得する',
     });
 
+    // Get Minutes Lambda
+    this.getMinutesHandler = new lambda.Function(this, 'GetMinutesHandler', {
+      functionName: `${appName}-get-minutes-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/get-minutes')),
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: '指定されたジョブIDの議事録を取得する',
+    });
+
+    // Download Minutes Lambda
+    this.downloadMinutesHandler = new lambda.Function(this, 'DownloadMinutesHandler', {
+      functionName: `${appName}-download-minutes-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/download-minutes')),
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: '議事録のダウンロードURL（Presigned URL）を生成する',
+    });
+
     // Step Functions ワークフロー定義
     this.stateMachine = this.createStateMachine(appName, environment);
 
@@ -294,6 +324,24 @@ export class ComputeStack extends cdk.Stack {
       })
     );
 
+    // GET /api/jobs/{jobId}/minutes エンドポイント - 議事録取得
+    const minutesResource = jobIdResource.addResource('minutes');
+    minutesResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(this.getMinutesHandler, {
+        proxy: true,
+      })
+    );
+
+    // GET /api/jobs/{jobId}/download エンドポイント - ダウンロードURL生成
+    const downloadResource = jobIdResource.addResource('download');
+    downloadResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(this.downloadMinutesHandler, {
+        proxy: true,
+      })
+    );
+
     // CloudFormation Outputs
     new cdk.CfnOutput(this, 'LambdaExecutionRoleArn', {
       value: this.lambdaExecutionRole.roleArn,
@@ -347,6 +395,18 @@ export class ComputeStack extends cdk.Stack {
       value: this.listJobsHandler.functionArn,
       description: 'List Jobs Lambda ARN',
       exportName: `${appName}-list-jobs-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'GetMinutesHandlerArn', {
+      value: this.getMinutesHandler.functionArn,
+      description: 'Get Minutes Lambda ARN',
+      exportName: `${appName}-get-minutes-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'DownloadMinutesHandlerArn', {
+      value: this.downloadMinutesHandler.functionArn,
+      description: 'Download Minutes Lambda ARN',
+      exportName: `${appName}-download-minutes-arn-${environment}`,
     });
 
     new cdk.CfnOutput(this, 'StateMachineArn', {

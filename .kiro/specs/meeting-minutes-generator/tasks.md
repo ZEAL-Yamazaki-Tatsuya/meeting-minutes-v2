@@ -157,22 +157,32 @@
     - Lambda統合を設定する
     - _Requirements: 3.1_
 
-- [ ] 8. 議事録取得とダウンロード機能の実装
-  - [ ] 8.1 議事録取得Lambda関数を作成する
+- [x] 8. 議事録取得とダウンロード機能の実装
+
+
+
+
+  - [x] 8.1 議事録取得Lambda関数を作成する
+
+
     - S3から議事録ファイル（Markdown）を取得する
     - JSONレスポンスとして議事録内容を返す
     - エラーハンドリングを実装する
     - ユニットテストを作成する
     - _Requirements: 7.2, 7.5_
   
-  - [ ] 8.2 ダウンロードURL生成Lambda関数を作成する
+
+  - [x] 8.2 ダウンロードURL生成Lambda関数を作成する
+
     - Markdown形式のPresigned URLを生成する
     - PDF変換が要求された場合の処理を実装する（PDF生成ライブラリを使用）
     - 複数フォーマット対応を実装する
     - ユニットテストを作成する
     - _Requirements: 7.3, 7.5_
   
-  - [ ] 8.3 API Gatewayエンドポイントを設定する
+
+  - [x] 8.3 API Gatewayエンドポイントを設定する
+
     - GET /api/jobs/{jobId}/minutesエンドポイントを定義する
     - GET /api/jobs/{jobId}/downloadエンドポイントを定義する
     - Lambda統合を設定する

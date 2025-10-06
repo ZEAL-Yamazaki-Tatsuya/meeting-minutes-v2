@@ -19,7 +19,9 @@ $lambdaFunctions = @(
     "transcribe-trigger",
     "check-transcribe-status",
     "get-job-status",
-    "list-jobs"
+    "list-jobs",
+    "get-minutes",
+    "download-minutes"
 )
 
 foreach ($func in $lambdaFunctions) {
