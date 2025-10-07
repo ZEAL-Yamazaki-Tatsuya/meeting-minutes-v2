@@ -135,7 +135,8 @@ export default function UploadPage() {
       const { jobId, uploadUrl } = await apiService.getUploadUrl(
         file.name,
         file.size,
-        userId
+        userId,
+        file.type || 'video/mp4'
       );
 
       // S3に直接アップロード
@@ -147,6 +148,18 @@ export default function UploadPage() {
 
       toast.dismiss();
       toast.success('アップロードが完了しました！');
+
+      // 処理を開始（Step Functionsワークフローを起動）
+      toast.loading('処理を開始しています...');
+      try {
+        await apiService.startProcessing(jobId, userId);
+        toast.dismiss();
+        toast.success('処理を開始しました！');
+      } catch (error) {
+        console.error('Failed to start processing:', error);
+        toast.dismiss();
+        toast.error('処理の開始に失敗しましたが、ジョブは作成されました');
+      }
 
       // ジョブ詳細ページへリダイレクト
       router.push(`/jobs/${jobId}`);

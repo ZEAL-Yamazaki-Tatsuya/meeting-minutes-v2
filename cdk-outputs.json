@@ -1,0 +1,29 @@
+{
+  "meeting-minutes-generator-storage-dev": {
+    "ExportsOutputRefOutputBucket7114EB279FD7F7F1": "meeting-minutes-generator-output-dev-490030480543",
+    "OutputBucketName": "meeting-minutes-generator-output-dev-490030480543",
+    "ExportsOutputFnGetAttInputBucket3BF8630AArnB4CC1184": "arn:aws:s3:::meeting-minutes-generator-input-dev-490030480543",
+    "InputBucketName": "meeting-minutes-generator-input-dev-490030480543",
+    "ExportsOutputFnGetAttOutputBucket7114EB27Arn67D5716D": "arn:aws:s3:::meeting-minutes-generator-output-dev-490030480543",
+    "JobsTableName": "meeting-minutes-generator-jobs-dev",
+    "ExportsOutputRefInputBucket3BF8630A70BB6653": "meeting-minutes-generator-input-dev-490030480543",
+    "JobsTableArn": "arn:aws:dynamodb:ap-northeast-1:490030480543:table/meeting-minutes-generator-jobs-dev",
+    "ExportsOutputFnGetAttJobsTable1970BC16ArnC40C1624": "arn:aws:dynamodb:ap-northeast-1:490030480543:table/meeting-minutes-generator-jobs-dev",
+    "ExportsOutputRefJobsTable1970BC16EDB4A824": "meeting-minutes-generator-jobs-dev"
+  },
+  "meeting-minutes-generator-compute-dev": {
+    "GetJobStatusHandlerArn": "arn:aws:lambda:ap-northeast-1:490030480543:function:meeting-minutes-generator-get-job-status-dev",
+    "TranscribeRoleArn": "arn:aws:iam::490030480543:role/meeting-minutes-generator-transcribe-role-dev",
+    "TranscribeTriggerArn": "arn:aws:lambda:ap-northeast-1:490030480543:function:meeting-minutes-generator-transcribe-trigger-dev",
+    "CheckTranscribeStatusArn": "arn:aws:lambda:ap-northeast-1:490030480543:function:meeting-minutes-generator-check-transcribe-status-dev",
+    "ListJobsHandlerArn": "arn:aws:lambda:ap-northeast-1:490030480543:function:meeting-minutes-generator-list-jobs-dev",
+    "StateMachineArn": "arn:aws:states:ap-northeast-1:490030480543:stateMachine:meeting-minutes-generator-workflow-dev",
+    "GetMinutesHandlerArn": "arn:aws:lambda:ap-northeast-1:490030480543:function:meeting-minutes-generator-get-minutes-dev",
+    "StepFunctionsRoleArn": "arn:aws:iam::490030480543:role/meeting-minutes-generator-stepfunctions-role-dev",
+    "ApiUrl": "https://vlrkc93753.execute-api.ap-northeast-1.amazonaws.com/dev/",
+    "LambdaExecutionRoleArn": "arn:aws:iam::490030480543:role/meeting-minutes-generator-lambda-role-dev",
+    "DownloadMinutesHandlerArn": "arn:aws:lambda:ap-northeast-1:490030480543:function:meeting-minutes-generator-download-minutes-dev",
+    "UploadHandlerArn": "arn:aws:lambda:ap-northeast-1:490030480543:function:meeting-minutes-generator-upload-handler-dev",
+    "MeetingMinutesApiEndpoint6370C2BB": "https://vlrkc93753.execute-api.ap-northeast-1.amazonaws.com/dev/"
+  }
+}

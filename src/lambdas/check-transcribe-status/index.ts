@@ -90,10 +90,11 @@ async function checkTranscriptionStatus(
         // S3 URIからキーを抽出
         const transcriptS3Key = `${input.userId}/${input.jobId}/transcript.json`;
 
-        // DynamoDBを更新
+        // DynamoDBを更新（ステータスをGENERATINGに変更）
         await jobRepository.updateJob({
           jobId: input.jobId,
           userId: input.userId,
+          status: 'GENERATING',
           transcriptS3Key,
         });
 

@@ -73,7 +73,7 @@ function ProgressSteps({ status }: { status: JobStatus }) {
  * ステータスバッジコンポーネント
  */
 function StatusBadge({ status }: { status: JobStatus }) {
-  const statusConfig = {
+  const statusConfig: Record<JobStatus, { label: string; color: string; icon: string }> = {
     UPLOADED: { label: 'アップロード完了', color: 'bg-blue-100 text-blue-800', icon: '📤' },
     TRANSCRIBING: { label: '文字起こし中', color: 'bg-yellow-100 text-yellow-800', icon: '🎤' },
     GENERATING: { label: '議事録生成中', color: 'bg-purple-100 text-purple-800', icon: '📝' },
@@ -81,7 +81,7 @@ function StatusBadge({ status }: { status: JobStatus }) {
     FAILED: { label: '失敗', color: 'bg-red-100 text-red-800', icon: '❌' },
   };
 
-  const config = statusConfig[status];
+  const config = statusConfig[status] || { label: '不明', color: 'bg-gray-100 text-gray-800', icon: '❓' };
 
   return (
     <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${config.color}`}>

@@ -3,6 +3,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
@@ -31,6 +32,8 @@ export class ComputeStack extends cdk.Stack {
   public readonly listJobsHandler: lambda.Function;
   public readonly getMinutesHandler: lambda.Function;
   public readonly downloadMinutesHandler: lambda.Function;
+  public readonly startProcessingHandler: lambda.Function;
+  public readonly minutesGeneratorHandler: lambda.Function;
   public readonly stateMachine: sfn.StateMachine;
 
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
@@ -135,119 +138,167 @@ export class ComputeStack extends cdk.Stack {
     };
 
     // Upload Handler Lambda
-    this.uploadHandler = new lambda.Function(this, 'UploadHandler', {
+    this.uploadHandler = new nodejs.NodejsFunction(this, 'UploadHandler', {
       functionName: `${appName}-upload-handler-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/upload-handler')),
+      entry: path.join(__dirname, '../src/lambdas/upload-handler/index.ts'),
+      handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'Presigned URLを生成し、ジョブレコードを作成する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
     });
 
     // Transcribe Trigger Lambda
-    this.transcribeTrigger = new lambda.Function(this, 'TranscribeTrigger', {
+    this.transcribeTrigger = new nodejs.NodejsFunction(this, 'TranscribeTrigger', {
       functionName: `${appName}-transcribe-trigger-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/transcribe-trigger')),
+      entry: path.join(__dirname, '../src/lambdas/transcribe-trigger/index.ts'),
+      handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(60),
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'AWS Transcribeジョブを開始し、話者識別を有効化する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
     });
 
     // Check Transcribe Status Lambda
-    this.checkTranscribeStatus = new lambda.Function(this, 'CheckTranscribeStatus', {
+    this.checkTranscribeStatus = new nodejs.NodejsFunction(this, 'CheckTranscribeStatus', {
       functionName: `${appName}-check-transcribe-status-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/check-transcribe-status')),
+      entry: path.join(__dirname, '../src/lambdas/check-transcribe-status/index.ts'),
+      handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'Transcribeジョブのステータスをポーリングし、DynamoDBを更新する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
     });
 
     // Get Job Status Lambda
-    this.getJobStatusHandler = new lambda.Function(this, 'GetJobStatusHandler', {
+    this.getJobStatusHandler = new nodejs.NodejsFunction(this, 'GetJobStatusHandler', {
       functionName: `${appName}-get-job-status-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/get-job-status')),
+      entry: path.join(__dirname, '../src/lambdas/get-job-status/index.ts'),
+      handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: '指定されたジョブIDのステータス情報を取得する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
     });
 
     // List Jobs Lambda
-    this.listJobsHandler = new lambda.Function(this, 'ListJobsHandler', {
+    this.listJobsHandler = new nodejs.NodejsFunction(this, 'ListJobsHandler', {
       functionName: `${appName}-list-jobs-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/list-jobs')),
+      entry: path.join(__dirname, '../src/lambdas/list-jobs/index.ts'),
+      handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'ユーザーのジョブ一覧を取得する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
     });
 
     // Get Minutes Lambda
-    this.getMinutesHandler = new lambda.Function(this, 'GetMinutesHandler', {
+    this.getMinutesHandler = new nodejs.NodejsFunction(this, 'GetMinutesHandler', {
       functionName: `${appName}-get-minutes-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/get-minutes')),
+      entry: path.join(__dirname, '../src/lambdas/get-minutes/index.ts'),
+      handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: '指定されたジョブIDの議事録を取得する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
     });
 
     // Download Minutes Lambda
-    this.downloadMinutesHandler = new lambda.Function(this, 'DownloadMinutesHandler', {
+    this.downloadMinutesHandler = new nodejs.NodejsFunction(this, 'DownloadMinutesHandler', {
       functionName: `${appName}-download-minutes-${environment}`,
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/lambdas/download-minutes')),
+      entry: path.join(__dirname, '../src/lambdas/download-minutes/index.ts'),
+      handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: '議事録のダウンロードURL（Presigned URL）を生成する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
+    });
+
+    // Minutes Generator Lambda
+    this.minutesGeneratorHandler = new nodejs.NodejsFunction(this, 'MinutesGeneratorHandler', {
+      functionName: `${appName}-minutes-generator-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: path.join(__dirname, '../src/lambdas/minutes-generator/index.ts'),
+      handler: 'handler',
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: '文字起こし結果から議事録を生成してS3に保存する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
     });
 
     // Step Functions ワークフロー定義
     this.stateMachine = this.createStateMachine(appName, environment);
-
-    // Upload HandlerにStep Functions ARNを環境変数として追加
-    // 注: 循環依存を避けるため、ARNを直接構築する
-    const stateMachineArn = `arn:aws:states:${this.region}:${this.account}:stateMachine:${appName}-workflow-${environment}`;
-    this.uploadHandler.addEnvironment('STATE_MACHINE_ARN', stateMachineArn);
-
-    // Upload HandlerにStep Functionsの実行権限を付与
-    this.uploadHandler.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['states:StartExecution'],
-        resources: [stateMachineArn],
-      })
-    );
 
     // API Gateway
     this.api = new apigateway.RestApi(this, 'MeetingMinutesApi', {
@@ -259,18 +310,6 @@ export class ComputeStack extends cdk.Stack {
         dataTraceEnabled: true,
         metricsEnabled: true,
       },
-      defaultCorsPreflightOptions: {
-        allowOrigins: corsAllowedOrigins || ['*'],
-        allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowHeaders: [
-          'Content-Type',
-          'X-Amz-Date',
-          'Authorization',
-          'X-Api-Key',
-          'X-Amz-Security-Token',
-        ],
-        allowCredentials: true,
-      },
       cloudWatchRole: true,
     });
 
@@ -279,18 +318,18 @@ export class ComputeStack extends cdk.Stack {
 
     // POST /api/upload エンドポイント
     const uploadResource = apiResource.addResource('upload');
+    
+    // OPTIONSメソッドを明示的に追加（CORSプリフライト用）
+    uploadResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+    
     uploadResource.addMethod(
       'POST',
       new apigateway.LambdaIntegration(this.uploadHandler, {
         proxy: true,
-        integrationResponses: [
-          {
-            statusCode: '200',
-            responseParameters: {
-              'method.response.header.Access-Control-Allow-Origin': "'*'",
-            },
-          },
-        ],
       }),
       {
         methodResponses: [
@@ -306,6 +345,13 @@ export class ComputeStack extends cdk.Stack {
 
     // /api/jobs リソース
     const jobsResource = apiResource.addResource('jobs');
+    
+    // CORSプリフライトを追加
+    jobsResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
 
     // GET /api/jobs エンドポイント - ジョブ一覧取得
     jobsResource.addMethod(
@@ -317,6 +363,14 @@ export class ComputeStack extends cdk.Stack {
 
     // GET /api/jobs/{jobId} エンドポイント - ジョブステータス取得
     const jobIdResource = jobsResource.addResource('{jobId}');
+    
+    // CORSプリフライトを追加
+    jobIdResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+    
     jobIdResource.addMethod(
       'GET',
       new apigateway.LambdaIntegration(this.getJobStatusHandler, {
@@ -326,6 +380,14 @@ export class ComputeStack extends cdk.Stack {
 
     // GET /api/jobs/{jobId}/minutes エンドポイント - 議事録取得
     const minutesResource = jobIdResource.addResource('minutes');
+    
+    // CORSプリフライトを追加
+    minutesResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['GET', 'PUT', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+    
     minutesResource.addMethod(
       'GET',
       new apigateway.LambdaIntegration(this.getMinutesHandler, {
@@ -335,9 +397,75 @@ export class ComputeStack extends cdk.Stack {
 
     // GET /api/jobs/{jobId}/download エンドポイント - ダウンロードURL生成
     const downloadResource = jobIdResource.addResource('download');
+    
+    // CORSプリフライトを追加
+    downloadResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+    
     downloadResource.addMethod(
       'GET',
       new apigateway.LambdaIntegration(this.downloadMinutesHandler, {
+        proxy: true,
+      })
+    );
+
+    // Start Processing Lambda専用のIAMロール（循環依存を回避）
+    const startProcessingRole = new iam.Role(this, 'StartProcessingRole', {
+      roleName: `${appName}-start-processing-role-${environment}`,
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      description: 'Execution role for Start Processing Lambda',
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+      ],
+    });
+
+    // DynamoDBとS3へのアクセス権限を付与
+    jobsTable.grantReadData(startProcessingRole);
+    inputBucket.grantRead(startProcessingRole);
+
+    // Start Processing Lambda（Step Functionsワークフローを起動）
+    // 注: API Gateway作成後に作成して循環依存を回避
+    this.startProcessingHandler = new nodejs.NodejsFunction(this, 'StartProcessingHandler', {
+      functionName: `${appName}-start-processing-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: path.join(__dirname, '../src/lambdas/start-processing/index.ts'),
+      handler: 'handler',
+      role: startProcessingRole,
+      environment: {
+        ...lambdaEnvironment,
+        STATE_MACHINE_ARN: this.stateMachine.stateMachineArn,
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: 'S3アップロード完了後にStep Functionsワークフローを起動する',
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
+    });
+
+    // Start Processing HandlerにStep Functionsの実行権限を付与
+    this.stateMachine.grantStartExecution(this.startProcessingHandler);
+
+    // POST /api/jobs/{jobId}/start エンドポイント - 処理開始
+    const startResource = jobIdResource.addResource('start');
+    
+    // CORSプリフライトを追加
+    startResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+    
+    startResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(this.startProcessingHandler, {
         proxy: true,
       })
     );
@@ -464,13 +592,24 @@ export class ComputeStack extends cdk.Stack {
       cause: 'AWS Transcribeジョブが失敗しました',
     });
 
-    // 6. GenerateMinutes ステート - 議事録生成（将来実装）
-    // TODO: Task 6で実装予定
-    const generateMinutesPlaceholder = new sfn.Pass(this, 'GenerateMinutes', {
-      comment: '議事録生成処理（将来実装予定）',
-      result: sfn.Result.fromObject({
-        message: '議事録生成は今後実装されます',
-      }),
+    // 6. GenerateMinutes ステート - 議事録生成
+    const generateMinutesTask = new tasks.LambdaInvoke(this, 'GenerateMinutes', {
+      lambdaFunction: this.minutesGeneratorHandler,
+      outputPath: '$.Payload',
+      retryOnServiceExceptions: true,
+      comment: '文字起こし結果から議事録を生成してS3に保存する',
+    });
+
+    // 議事録生成失敗時の処理
+    const minutesGenerationFailed = new sfn.Fail(this, 'MinutesGenerationFailed', {
+      error: 'MinutesGenerationFailed',
+      cause: '議事録生成に失敗しました',
+    });
+
+    // エラーハンドリングの設定
+    generateMinutesTask.addCatch(minutesGenerationFailed, {
+      errors: ['States.ALL'],
+      resultPath: '$.error',
     });
 
     // 7. Success ステート - 成功
@@ -501,7 +640,7 @@ export class ComputeStack extends cdk.Stack {
           )
           .when(
             sfn.Condition.booleanEquals('$.isComplete', true),
-            generateMinutesPlaceholder.next(successState)
+            generateMinutesTask.next(successState)
           )
           .otherwise(waitForTranscription)
       );

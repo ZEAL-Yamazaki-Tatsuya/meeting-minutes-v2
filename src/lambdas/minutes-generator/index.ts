@@ -13,9 +13,9 @@ import { Minutes } from '../../models/minutes';
 const logger = new Logger({ lambda: 'minutes-generator' });
 
 // 環境変数
-const TABLE_NAME = process.env.TABLE_NAME || '';
-const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET || '';
-const INPUT_BUCKET = process.env.INPUT_BUCKET || '';
+const TABLE_NAME = process.env.JOBS_TABLE_NAME || process.env.TABLE_NAME || '';
+const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET_NAME || process.env.OUTPUT_BUCKET || '';
+const INPUT_BUCKET = process.env.INPUT_BUCKET_NAME || process.env.INPUT_BUCKET || '';
 
 // クライアントの初期化（テスト時に上書き可能）
 let s3Client: S3Client;
