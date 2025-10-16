@@ -142,7 +142,8 @@ applications:
       description: 'Amplify Console URL',
     });
 
-    // タグの追加
+    // Add stack-specific tags
+    cdk.Tags.of(this).add('Stack', 'Frontend');
     cdk.Tags.of(this).add('Component', 'Frontend');
     cdk.Tags.of(this).add('Service', 'Amplify');
   }

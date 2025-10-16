@@ -137,5 +137,9 @@ export class AuthStack extends cdk.Stack {
       description: 'Cognito User Pool Domain URL',
       exportName: `${appName}-user-pool-domain-url-${environment}`,
     });
+
+    // Add stack-specific tags
+    cdk.Tags.of(this).add('Stack', 'Auth');
+    cdk.Tags.of(this).add('Component', 'Security');
   }
 }

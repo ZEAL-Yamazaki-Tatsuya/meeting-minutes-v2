@@ -583,6 +583,10 @@ export class ComputeStack extends cdk.Stack {
       description: 'Step Functions State Machine ARN',
       exportName: `${appName}-state-machine-arn-${environment}`,
     });
+
+    // Add stack-specific tags
+    cdk.Tags.of(this).add('Stack', 'Compute');
+    cdk.Tags.of(this).add('Component', 'Backend');
   }
 
   /**

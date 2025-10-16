@@ -139,5 +139,9 @@ export class StorageStack extends cdk.Stack {
       description: 'DynamoDB table ARN',
       exportName: `${appName}-jobs-table-arn-${environment}`,
     });
+
+    // Add stack-specific tags
+    cdk.Tags.of(this).add('Stack', 'Storage');
+    cdk.Tags.of(this).add('Component', 'Backend');
   }
 }

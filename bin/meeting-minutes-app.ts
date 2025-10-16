@@ -84,7 +84,10 @@ if (useAmplify) {
   frontendStack.addDependency(authStack);
 }
 
-// Add tags to all resources
+// Add tags to all resources for cost tracking and management
 cdk.Tags.of(app).add('Application', appName);
 cdk.Tags.of(app).add('Environment', environment);
 cdk.Tags.of(app).add('ManagedBy', 'CDK');
+cdk.Tags.of(app).add('Project', 'meeting-minutes-generator');
+cdk.Tags.of(app).add('CostCenter', 'Development');
+cdk.Tags.of(app).add('Owner', process.env.OWNER_EMAIL || 'admin');
