@@ -16,6 +16,100 @@ const repository = new MeetingJobRepository(
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
 /**
+ * Markdownから構造化データを抽出する
+ */
+function parseMarkdownMinutes(markdown: string): {
+    summary: string;
+    decisions: Array<{ id: string; description: string; timestamp?: string }>;
+    nextActions: Array<{ id: string; description: string; assignee?: string; dueDate?: string; timestamp?: string }>;
+    transcript: string;
+    speakers: Array<{ id: string; name?: string; segments: number }>;
+} {
+    const lines = markdown.split('\n');
+    let summary = '';
+    const decisions: Array<{ id: string; description: string; timestamp?: string }> = [];
+    const nextActions: Array<{ id: string; description: string; assignee?: string; dueDate?: string; timestamp?: string }> = [];
+    let transcript = '';
+    const speakers: Array<{ id: string; name?: string; segments: number }> = [];
+
+    let currentSection = '';
+    let currentText = '';
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        // セクションヘッダーを検出
+        if (line.startsWith('## 概要')) {
+            currentSection = 'summary';
+            currentText = '';
+            continue;
+        } else if (line.startsWith('## 決定事項')) {
+            if (currentSection === 'summary') {
+                summary = currentText.trim();
+            }
+            currentSection = 'decisions';
+            currentText = '';
+            continue;
+        } else if (line.startsWith('## ネクストアクション')) {
+            currentSection = 'nextActions';
+            currentText = '';
+            continue;
+        } else if (line.startsWith('## 文字起こし全文')) {
+            currentSection = 'transcript';
+            currentText = '';
+            continue;
+        }
+
+        // 各セクションの内容を処理
+        if (currentSection === 'summary' && line && !line.startsWith('#')) {
+            currentText += line + '\n';
+        } else if (currentSection === 'decisions' && line) {
+            // 決定事項の行をパース（例: 1. 決定内容 ([00:03:53])）
+            const match = line.match(/^\d+\.\s+(.+?)(?:\s+\((\[[\d:]+\])\))?$/);
+            if (match) {
+                decisions.push({
+                    id: `decision-${decisions.length + 1}`,
+                    description: match[1].trim(),
+                    timestamp: match[2],
+                });
+            } else if (line !== '決定事項はありません。') {
+                currentText += line + '\n';
+            }
+        } else if (currentSection === 'nextActions' && line) {
+            // ネクストアクションの行をパース
+            // 例: 1. アクション内容 - 担当: 名前 - 期限: 2024-01-09 ([00:03:02])
+            const match = line.match(/^\d+\.\s+(.+?)(?:\s+-\s+担当:\s+([^\s-]+))?(?:\s+-\s+期限:\s+([\d-]+))?(?:\s+\((\[[\d:]+\])\))?$/);
+            if (match) {
+                nextActions.push({
+                    id: `action-${nextActions.length + 1}`,
+                    description: match[1].trim(),
+                    assignee: match[2],
+                    dueDate: match[3],
+                    timestamp: match[4],
+                });
+            } else if (line !== 'ネクストアクションはありません。') {
+                currentText += line + '\n';
+            }
+        } else if (currentSection === 'transcript' && line && !line.startsWith('#')) {
+            currentText += line + '\n';
+        }
+    }
+
+    // 最後のセクションを処理
+    if (currentSection === 'transcript') {
+        transcript = currentText.trim();
+    }
+
+    return {
+        summary,
+        decisions,
+        nextActions,
+        transcript,
+        speakers,
+    };
+}
+
+/**
  * S3から議事録ファイルを取得する
  */
 async function getMinutesFromS3(s3Key: string, bucketName: string): Promise<string> {
@@ -101,6 +195,9 @@ export const handler = async (
 
         const minutesContent = await getMinutesFromS3(job.minutesS3Key, outputBucketName);
 
+        // Markdownから構造化データを抽出
+        const parsedMinutes = parseMarkdownMinutes(minutesContent);
+
         logger.info('Minutes retrieved successfully', { jobId, userId });
 
         return {
@@ -115,12 +212,12 @@ export const handler = async (
                 data: {
                     jobId: job.jobId,
                     userId: job.userId,
-                    status: job.status,
-                    videoFileName: job.videoFileName,
-                    createdAt: job.createdAt,
-                    updatedAt: job.updatedAt,
-                    minutesContent: minutesContent,
-                    metadata: job.metadata,
+                    generatedAt: job.updatedAt,
+                    summary: parsedMinutes.summary,
+                    decisions: parsedMinutes.decisions,
+                    nextActions: parsedMinutes.nextActions,
+                    transcript: parsedMinutes.transcript,
+                    speakers: parsedMinutes.speakers,
                 },
             }),
         };

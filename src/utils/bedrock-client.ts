@@ -30,7 +30,8 @@ export class BedrockClient {
 
   constructor(config: BedrockClientConfig = {}) {
     this.client = new BedrockRuntimeClient({});
-    this.modelId = config.modelId || 'anthropic.claude-3-sonnet-20240229-v1:0';
+    // Inference Profile IDを使用（APACリージョンのClaude 3.5 Sonnet v2）
+    this.modelId = config.modelId || process.env.BEDROCK_MODEL_ID || 'apac.anthropic.claude-3-5-sonnet-20241022-v2:0';
     this.maxRetries = config.maxRetries || 3;
     this.retryDelay = config.retryDelay || 1000;
   }

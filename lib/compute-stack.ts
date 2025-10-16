@@ -71,7 +71,7 @@ export class ComputeStack extends cdk.Stack {
       })
     );
 
-    // Grant Lambda access to Bedrock
+    // Grant Lambda access to Bedrock (foundation models and inference profiles)
     this.lambdaExecutionRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
@@ -81,6 +81,7 @@ export class ComputeStack extends cdk.Stack {
         ],
         resources: [
           `arn:aws:bedrock:*::foundation-model/*`,
+          `arn:aws:bedrock:*:${this.account}:inference-profile/*`,
         ],
       })
     );
@@ -135,6 +136,7 @@ export class ComputeStack extends cdk.Stack {
       JOBS_TABLE_NAME: jobsTable.tableName,
       MAX_FILE_SIZE_MB: '2048',
       ALLOWED_FILE_TYPES: 'video/mp4',
+      BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID || 'apac.anthropic.claude-3-5-sonnet-20241022-v2:0',
     };
 
     // Upload Handler Lambda

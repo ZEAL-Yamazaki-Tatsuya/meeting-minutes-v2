@@ -94,11 +94,21 @@ async function checkTranscriptionStatus(
         if (transcriptFileUri.startsWith('s3://')) {
           // s3://bucket-name/key 形式
           const parts = transcriptFileUri.replace('s3://', '').split('/');
+          // バケット名を除外してキーのみを取得
           transcriptS3Key = parts.slice(1).join('/');
         } else if (transcriptFileUri.startsWith('https://')) {
           // https://s3.region.amazonaws.com/bucket-name/key 形式
+          // または https://bucket-name.s3.region.amazonaws.com/key 形式
           const url = new URL(transcriptFileUri);
-          transcriptS3Key = url.pathname.substring(1); // 先頭の/を削除
+          let pathname = url.pathname.substring(1); // 先頭の/を削除
+          
+          // パス形式の場合、最初のセグメントがバケット名の可能性がある
+          // バケット名がパスに含まれている場合は除外
+          if (pathname.startsWith(OUTPUT_BUCKET_NAME + '/')) {
+            pathname = pathname.substring(OUTPUT_BUCKET_NAME.length + 1);
+          }
+          
+          transcriptS3Key = pathname;
         } else {
           // フォールバック: 期待されるキーを使用
           transcriptS3Key = `${input.userId}/${input.jobId}/transcript.json`;

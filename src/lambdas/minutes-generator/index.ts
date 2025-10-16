@@ -64,9 +64,9 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
     await repository.updateJobStatus(jobId, userId, 'GENERATING');
 
     // 1. S3からTranscript JSONを取得して解析
-    logger.info('Transcript JSONを取得中', { transcriptS3Key });
+    logger.info('Transcript JSONを取得中', { bucket: OUTPUT_BUCKET, transcriptS3Key });
     const transcribeOutput = await transcriptParser.fetchTranscriptFromS3(
-      INPUT_BUCKET,
+      OUTPUT_BUCKET,
       transcriptS3Key
     );
 
