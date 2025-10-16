@@ -24,4 +24,48 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* タッチ操作の最適化 */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* レスポンシブ対応のための追加スタイル */
+@layer base {
+  /* スクロールバーのスタイリング（Webkit系ブラウザ） */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
+  /* モバイルでのフォントサイズ調整を防ぐ */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* タッチデバイスでのスムーズスクロール */
+  @media (hover: none) and (pointer: coarse) {
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
 }

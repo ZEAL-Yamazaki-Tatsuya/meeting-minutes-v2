@@ -191,27 +191,27 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-16">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         <div className="max-w-3xl mx-auto">
           {/* ヘッダー */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 px-2">
               ファイルアップロード
             </h1>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600 px-4">
               MP4形式の会議録画ファイルをアップロードしてください
             </p>
           </div>
 
           {/* アップロードエリア */}
-          <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
+          <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 lg:p-8 mb-4 sm:mb-6">
             {/* ドラッグ&ドロップエリア */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               className={`
-                border-2 border-dashed rounded-lg p-12 text-center transition-all
+                border-2 border-dashed rounded-lg p-6 sm:p-8 lg:p-12 text-center transition-all touch-manipulation
                 ${isDragging 
                   ? 'border-blue-500 bg-blue-50' 
                   : 'border-gray-300 hover:border-gray-400'
@@ -220,9 +220,9 @@ export default function UploadPage() {
               `}
             >
               {/* アイコン */}
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 <svg
-                  className="mx-auto h-16 w-16 text-gray-400"
+                  className="mx-auto h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16 text-gray-400"
                   stroke="currentColor"
                   fill="none"
                   viewBox="0 0 48 48"
@@ -238,11 +238,11 @@ export default function UploadPage() {
               </div>
 
               {/* テキスト */}
-              <div className="mb-4">
-                <p className="text-lg text-gray-700 mb-2">
+              <div className="mb-3 sm:mb-4">
+                <p className="text-base sm:text-lg text-gray-700 mb-1 sm:mb-2 px-2">
                   ファイルをドラッグ&ドロップ
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs sm:text-sm text-gray-500">
                   または
                 </p>
               </div>
@@ -256,25 +256,25 @@ export default function UploadPage() {
                   disabled={isUploading}
                   className="hidden"
                 />
-                <span className="cursor-pointer inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                <span className="cursor-pointer inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-colors touch-manipulation">
                   ファイルを選択
                 </span>
               </label>
 
               {/* ファイル形式の説明 */}
-              <p className="mt-4 text-xs text-gray-500">
+              <p className="mt-3 sm:mt-4 text-xs text-gray-500 px-2">
                 MP4形式のみ対応（最大2GB）
               </p>
             </div>
 
             {/* 選択されたファイル情報 */}
             {file && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
+              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
                     <div className="flex-shrink-0">
                       <svg
-                        className="h-10 w-10 text-blue-500"
+                        className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -285,8 +285,8 @@ export default function UploadPage() {
                         />
                       </svg>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
                         {file.name}
                       </p>
                       <p className="text-xs text-gray-500">
@@ -297,7 +297,7 @@ export default function UploadPage() {
                   {!isUploading && (
                     <button
                       onClick={() => setFile(null)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                      className="text-red-600 hover:text-red-800 active:text-red-900 text-xs sm:text-sm font-medium flex-shrink-0 touch-manipulation px-2 py-1"
                     >
                       削除
                     </button>
@@ -334,15 +334,15 @@ export default function UploadPage() {
             )}
 
             {/* アップロードボタン */}
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <button
                 onClick={handleUpload}
                 disabled={!file || isUploading || !!validationError}
                 className={`
-                  w-full py-3 px-4 rounded-lg font-medium text-white transition-colors
+                  w-full py-3 sm:py-3.5 px-4 rounded-lg font-medium text-white transition-colors text-sm sm:text-base touch-manipulation
                   ${!file || isUploading || validationError
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
+                    : 'bg-green-600 hover:bg-green-700 active:bg-green-800'
                   }
                 `}
               >
@@ -355,7 +355,7 @@ export default function UploadPage() {
           <div className="text-center">
             <button
               onClick={() => router.push('/')}
-              className="text-blue-600 hover:text-blue-800 font-medium"
+              className="text-blue-600 hover:text-blue-800 active:text-blue-900 font-medium text-sm sm:text-base touch-manipulation py-2 px-4"
             >
               ← ホームに戻る
             </button>

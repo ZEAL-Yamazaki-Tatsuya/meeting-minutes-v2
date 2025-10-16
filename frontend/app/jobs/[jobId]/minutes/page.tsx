@@ -32,12 +32,12 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center">
-        <span className="mr-3 text-3xl">{icon}</span>
-        {title}
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 lg:p-6 mb-4 sm:mb-5 lg:mb-6">
+      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+        <span className="mr-2 sm:mr-3 text-2xl sm:text-3xl flex-shrink-0">{icon}</span>
+        <span className="break-words">{title}</span>
       </h2>
-      <div className="text-gray-700">{children}</div>
+      <div className="text-gray-700 text-sm sm:text-base">{children}</div>
     </div>
   );
 }
@@ -202,7 +202,7 @@ export default function MinutesPage() {
   };
 
   // ダウンロード処理
-  const handleDownload = async (format: 'markdown' | 'pdf' | 'text') => {
+  const handleDownload = async (format: 'markdown' | 'text') => {
     try {
       setIsDownloading(true);
       setShowDownloadMenu(false);
@@ -212,7 +212,7 @@ export default function MinutesPage() {
       // ダウンロードを実行
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.download = `minutes-${jobId}.${format === 'markdown' ? 'md' : format}`;
+      link.download = `minutes-${jobId}.${format === 'markdown' ? 'md' : 'txt'}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -240,15 +240,15 @@ export default function MinutesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="max-w-5xl mx-auto">
           {/* 戻るボタン */}
           <button
             onClick={() => router.push(`/jobs/${jobId}`)}
-            className="mb-6 text-blue-600 hover:text-blue-800 font-medium flex items-center"
+            className="mb-4 sm:mb-6 text-blue-600 hover:text-blue-800 active:text-blue-900 font-medium flex items-center touch-manipulation py-2 px-3 text-sm sm:text-base"
           >
             <svg
-              className="w-5 h-5 mr-2"
+              className="w-4 h-4 sm:w-5 sm:h-5 mr-2"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -264,37 +264,122 @@ export default function MinutesPage() {
           </button>
 
           {/* ヘッダー */}
-          <div className="mb-8 flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                議事録
-              </h1>
-              {minutes && (
-                <p className="text-gray-600 text-sm">
-                  生成日時: {formatDate(minutes.generatedAt)}
-                </p>
-              )}
-            </div>
-            
-            {/* アクションボタン */}
-            {!loading && minutes && !isEditing && (
-              <div className="flex gap-3">
-                {/* ダウンロードボタン */}
-                <div className="relative download-menu-container">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                  議事録
+                </h1>
+                {minutes && (
+                  <p className="text-gray-600 text-xs sm:text-sm">
+                    生成日時: {formatDate(minutes.generatedAt)}
+                  </p>
+                )}
+              </div>
+              
+              {/* アクションボタン */}
+              {!loading && minutes && !isEditing && (
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  {/* ダウンロードボタン */}
+                  <div className="relative download-menu-container">
+                    <button
+                      onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                      disabled={isDownloading}
+                      className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg transition-colors flex items-center justify-center disabled:opacity-50 touch-manipulation text-sm sm:text-base"
+                    >
+                      {isDownloading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
+                          ダウンロード中...
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="w-4 h-4 sm:w-5 sm:h-5 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                          </svg>
+                          ダウンロード
+                        </>
+                      )}
+                    </button>
+
+                    {/* ダウンロードメニュー */}
+                    {showDownloadMenu && (
+                      <div className="absolute right-0 mt-2 w-full sm:w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                        <button
+                          onClick={() => handleDownload('markdown')}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center rounded-t-lg touch-manipulation text-sm sm:text-base"
+                        >
+                          <span className="mr-3">📄</span>
+                          Markdown (.md)
+                        </button>
+                        <button
+                          onClick={() => handleDownload('text')}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center border-t border-gray-100 rounded-b-lg touch-manipulation text-sm sm:text-base"
+                        >
+                          <span className="mr-3">📝</span>
+                          テキスト (.txt)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 編集ボタン */}
                   <button
-                    onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                    disabled={isDownloading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors flex items-center disabled:opacity-50"
+                    onClick={handleStartEdit}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg transition-colors flex items-center justify-center touch-manipulation text-sm sm:text-base"
                   >
-                    {isDownloading ? (
+                    <svg
+                      className="w-4 h-4 sm:w-5 sm:h-5 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                    編集
+                  </button>
+                </div>
+              )}
+
+              {/* 保存・キャンセルボタン */}
+              {isEditing && (
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg transition-colors disabled:opacity-50 touch-manipulation text-sm sm:text-base"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleSaveClick}
+                    disabled={isSaving}
+                    className="w-full sm:w-auto bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-2 px-4 sm:px-6 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center touch-manipulation text-sm sm:text-base"
+                  >
+                    {isSaving ? (
                       <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        ダウンロード中...
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
+                        保存中...
                       </>
                     ) : (
                       <>
                         <svg
-                          className="w-5 h-5 mr-2"
+                          className="w-4 h-4 sm:w-5 sm:h-5 mr-2"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -303,99 +388,16 @@ export default function MinutesPage() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            d="M5 13l4 4L19 7"
                           />
                         </svg>
-                        ダウンロード
+                        保存
                       </>
                     )}
                   </button>
-
-                  {/* ダウンロードメニュー */}
-                  {showDownloadMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
-                      <button
-                        onClick={() => handleDownload('markdown')}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center rounded-t-lg"
-                      >
-                        <span className="mr-3">📄</span>
-                        Markdown (.md)
-                      </button>
-                      <button
-                        onClick={() => handleDownload('text')}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center border-t border-gray-100 rounded-b-lg"
-                      >
-                        <span className="mr-3">📝</span>
-                        テキスト (.txt)
-                      </button>
-                    </div>
-                  )}
                 </div>
-
-                {/* 編集ボタン */}
-                <button
-                  onClick={handleStartEdit}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors flex items-center"
-                >
-                  <svg
-                    className="w-5 h-5 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                  編集
-                </button>
-              </div>
-            )}
-
-            {/* 保存・キャンセルボタン */}
-            {isEditing && (
-              <div className="flex gap-3">
-                <button
-                  onClick={handleCancelEdit}
-                  disabled={isSaving}
-                  className="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleSaveClick}
-                  disabled={isSaving}
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors disabled:opacity-50 flex items-center"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      保存中...
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-5 h-5 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      保存
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* ローディング表示 */}
@@ -435,11 +437,11 @@ export default function MinutesPage() {
                   <textarea
                     value={editedSummary}
                     onChange={(e) => setEditedSummary(e.target.value)}
-                    className="w-full min-h-[150px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full min-h-[120px] sm:min-h-[150px] p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                     placeholder="会議の概要を入力してください..."
                   />
                 ) : (
-                  <div className="prose max-w-none">
+                  <div className="prose prose-sm sm:prose max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {minutes.summary}
                     </ReactMarkdown>
@@ -450,13 +452,13 @@ export default function MinutesPage() {
               {/* 決定事項セクション */}
               <SectionCard title="決定事項" icon="✅">
                 {isEditing ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {editedDecisions.map((decision, index) => (
                       <div
                         key={decision.id}
-                        className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200"
+                        className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200"
                       >
-                        <span className="text-green-600 mt-3 flex-shrink-0">
+                        <span className="text-green-600 mt-2 sm:mt-3 flex-shrink-0 text-sm sm:text-base">
                           ✓
                         </span>
                         <textarea
@@ -464,16 +466,16 @@ export default function MinutesPage() {
                           onChange={(e) =>
                             handleUpdateDecision(decision.id, e.target.value)
                           }
-                          className="flex-1 min-h-[80px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          className="flex-1 min-h-[60px] sm:min-h-[80px] p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm sm:text-base"
                           placeholder={`決定事項 ${index + 1}`}
                         />
                         <button
                           onClick={() => handleRemoveDecision(decision.id)}
-                          className="text-red-600 hover:text-red-800 mt-3 flex-shrink-0"
+                          className="text-red-600 hover:text-red-800 active:text-red-900 mt-2 sm:mt-3 flex-shrink-0 touch-manipulation p-1"
                           title="削除"
                         >
                           <svg
-                            className="w-5 h-5"
+                            className="w-4 h-4 sm:w-5 sm:h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -490,29 +492,29 @@ export default function MinutesPage() {
                     ))}
                     <button
                       onClick={handleAddDecision}
-                      className="w-full py-3 border-2 border-dashed border-green-300 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
+                      className="w-full py-2.5 sm:py-3 border-2 border-dashed border-green-300 rounded-lg text-green-600 hover:bg-green-50 active:bg-green-100 transition-colors touch-manipulation text-sm sm:text-base"
                     >
                       + 決定事項を追加
                     </button>
                   </div>
                 ) : minutes.decisions && minutes.decisions.length > 0 ? (
-                  <ul className="space-y-3">
+                  <ul className="space-y-2 sm:space-y-3">
                     {minutes.decisions.map((decision) => (
                       <li
                         key={decision.id}
-                        className="flex items-start p-4 bg-green-50 rounded-lg border border-green-200"
+                        className="flex items-start p-3 sm:p-4 bg-green-50 rounded-lg border border-green-200"
                       >
-                        <span className="text-green-600 mr-3 mt-1 flex-shrink-0">
+                        <span className="text-green-600 mr-2 sm:mr-3 mt-1 flex-shrink-0 text-sm sm:text-base">
                           ✓
                         </span>
-                        <div className="flex-1">
-                          <div className="prose max-w-none">
+                        <div className="flex-1 min-w-0">
+                          <div className="prose prose-sm sm:prose max-w-none">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {decision.description}
                             </ReactMarkdown>
                           </div>
                           {decision.timestamp && (
-                            <p className="text-sm text-gray-500 mt-2">
+                            <p className="text-xs sm:text-sm text-gray-500 mt-2">
                               タイムスタンプ: {decision.timestamp}
                             </p>
                           )}
@@ -521,21 +523,21 @@ export default function MinutesPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-gray-500 italic">決定事項はありません。</p>
+                  <p className="text-gray-500 italic text-sm sm:text-base">決定事項はありません。</p>
                 )}
               </SectionCard>
 
               {/* ネクストアクションセクション */}
               <SectionCard title="ネクストアクション" icon="🎯">
                 {isEditing ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {editedNextActions.map((action, index) => (
                       <div
                         key={action.id}
-                        className="p-4 bg-blue-50 rounded-lg border border-blue-200"
+                        className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200"
                       >
-                        <div className="flex items-start gap-3 mb-3">
-                          <span className="text-blue-600 mt-3 flex-shrink-0">
+                        <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                          <span className="text-blue-600 mt-2 sm:mt-3 flex-shrink-0 text-sm sm:text-base">
                             →
                           </span>
                           <textarea
@@ -547,16 +549,16 @@ export default function MinutesPage() {
                                 e.target.value
                               )
                             }
-                            className="flex-1 min-h-[80px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="flex-1 min-h-[60px] sm:min-h-[80px] p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                             placeholder={`アクション ${index + 1}`}
                           />
                           <button
                             onClick={() => handleRemoveNextAction(action.id)}
-                            className="text-red-600 hover:text-red-800 mt-3 flex-shrink-0"
+                            className="text-red-600 hover:text-red-800 active:text-red-900 mt-2 sm:mt-3 flex-shrink-0 touch-manipulation p-1"
                             title="削除"
                           >
                             <svg
-                              className="w-5 h-5"
+                              className="w-4 h-4 sm:w-5 sm:h-5"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -570,7 +572,7 @@ export default function MinutesPage() {
                             </svg>
                           </button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 ml-0 sm:ml-8">
                           <input
                             type="text"
                             value={action.assignee || ''}
@@ -581,7 +583,7 @@ export default function MinutesPage() {
                                 e.target.value
                               )
                             }
-                            className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs sm:text-sm"
                             placeholder="担当者"
                           />
                           <input
@@ -594,7 +596,7 @@ export default function MinutesPage() {
                                 e.target.value
                               )
                             }
-                            className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs sm:text-sm"
                             placeholder="期限（例: 2025-10-15）"
                           />
                         </div>
@@ -602,40 +604,40 @@ export default function MinutesPage() {
                     ))}
                     <button
                       onClick={handleAddNextAction}
-                      className="w-full py-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
+                      className="w-full py-2.5 sm:py-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation text-sm sm:text-base"
                     >
                       + ネクストアクションを追加
                     </button>
                   </div>
                 ) : minutes.nextActions && minutes.nextActions.length > 0 ? (
-                  <ul className="space-y-3">
+                  <ul className="space-y-2 sm:space-y-3">
                     {minutes.nextActions.map((action) => (
                       <li
                         key={action.id}
-                        className="flex items-start p-4 bg-blue-50 rounded-lg border border-blue-200"
+                        className="flex items-start p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200"
                       >
-                        <span className="text-blue-600 mr-3 mt-1 flex-shrink-0">
+                        <span className="text-blue-600 mr-2 sm:mr-3 mt-1 flex-shrink-0 text-sm sm:text-base">
                           →
                         </span>
-                        <div className="flex-1">
-                          <div className="prose max-w-none">
+                        <div className="flex-1 min-w-0">
+                          <div className="prose prose-sm sm:prose max-w-none">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {action.description}
                             </ReactMarkdown>
                           </div>
-                          <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                          <div className="flex flex-wrap gap-2 sm:gap-4 mt-2 text-xs sm:text-sm">
                             {action.assignee && (
-                              <span className="text-gray-600">
+                              <span className="text-gray-600 break-words">
                                 <strong>担当者:</strong> {action.assignee}
                               </span>
                             )}
                             {action.dueDate && (
-                              <span className="text-gray-600">
+                              <span className="text-gray-600 break-words">
                                 <strong>期限:</strong> {action.dueDate}
                               </span>
                             )}
                             {action.timestamp && (
-                              <span className="text-gray-500">
+                              <span className="text-gray-500 break-words">
                                 タイムスタンプ: {action.timestamp}
                               </span>
                             )}
@@ -645,7 +647,7 @@ export default function MinutesPage() {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-gray-500 italic">
+                  <p className="text-gray-500 italic text-sm sm:text-base">
                     ネクストアクションはありません。
                   </p>
                 )}
@@ -654,16 +656,16 @@ export default function MinutesPage() {
               {/* 話者情報セクション（存在する場合） */}
               {minutes.speakers && minutes.speakers.length > 0 && (
                 <SectionCard title="話者情報" icon="👥">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {minutes.speakers.map((speaker) => (
                       <div
                         key={speaker.id}
-                        className="p-4 bg-purple-50 rounded-lg border border-purple-200"
+                        className="p-3 sm:p-4 bg-purple-50 rounded-lg border border-purple-200"
                       >
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base break-words">
                           {speaker.name || `話者 ${speaker.id}`}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
                           発言回数: {speaker.segments}
                         </p>
                       </div>
@@ -673,17 +675,17 @@ export default function MinutesPage() {
               )}
 
               {/* 文字起こし全文セクション */}
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 lg:p-6">
                 <button
                   onClick={() => setShowTranscript(!showTranscript)}
-                  className="w-full flex items-center justify-between text-left"
+                  className="w-full flex items-center justify-between text-left touch-manipulation"
                 >
-                  <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
-                    <span className="mr-3 text-3xl">📝</span>
-                    文字起こし全文
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center min-w-0 flex-1">
+                    <span className="mr-2 sm:mr-3 text-2xl sm:text-3xl flex-shrink-0">📝</span>
+                    <span className="break-words">文字起こし全文</span>
                   </h2>
                   <svg
-                    className={`w-6 h-6 text-gray-600 transition-transform ${
+                    className={`w-5 h-5 sm:w-6 sm:h-6 text-gray-600 transition-transform flex-shrink-0 ml-2 ${
                       showTranscript ? 'transform rotate-180' : ''
                     }`}
                     fill="none"
@@ -700,8 +702,8 @@ export default function MinutesPage() {
                 </button>
 
                 {showTranscript && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
-                    <pre className="whitespace-pre-wrap text-sm text-gray-700 font-mono">
+                  <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-64 sm:max-h-80 lg:max-h-96 overflow-y-auto">
+                    <pre className="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-mono break-words">
                       {minutes.transcript}
                     </pre>
                   </div>
@@ -712,24 +714,24 @@ export default function MinutesPage() {
 
           {/* 保存確認ダイアログ */}
           {showSaveConfirm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 max-w-md w-full">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
                   変更を保存しますか？
                 </h3>
-                <p className="text-gray-600 mb-6">
+                <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
                   議事録の変更内容を保存します。この操作は元に戻せません。
                 </p>
-                <div className="flex gap-3 justify-end">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end">
                   <button
                     onClick={() => setShowSaveConfirm(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation text-sm sm:text-base order-2 sm:order-1"
                   >
                     キャンセル
                   </button>
                   <button
                     onClick={handleConfirmSave}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                    className="w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-lg transition-colors touch-manipulation text-sm sm:text-base order-1 sm:order-2"
                   >
                     保存する
                   </button>

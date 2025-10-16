@@ -10,10 +10,10 @@ import { Job, JobStatus } from '@/types';
  */
 function ProgressSteps({ status }: { status: JobStatus }) {
   const steps = [
-    { key: 'UPLOADED', label: 'アップロード完了', icon: '📤' },
-    { key: 'TRANSCRIBING', label: '文字起こし中', icon: '🎤' },
-    { key: 'GENERATING', label: '議事録生成中', icon: '📝' },
-    { key: 'COMPLETED', label: '完了', icon: '✅' },
+    { key: 'UPLOADED', label: 'アップロード完了', icon: '📤', shortLabel: 'アップロード' },
+    { key: 'TRANSCRIBING', label: '文字起こし中', icon: '🎤', shortLabel: '文字起こし' },
+    { key: 'GENERATING', label: '議事録生成中', icon: '📝', shortLabel: '議事録生成' },
+    { key: 'COMPLETED', label: '完了', icon: '✅', shortLabel: '完了' },
   ];
 
   const statusOrder = ['UPLOADED', 'TRANSCRIBING', 'GENERATING', 'COMPLETED'];
@@ -21,17 +21,17 @@ function ProgressSteps({ status }: { status: JobStatus }) {
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 sm:mb-8">
         {steps.map((step, index) => {
           const isActive = index === currentIndex;
           const isCompleted = index < currentIndex || status === 'COMPLETED';
 
           return (
             <div key={step.key} className="flex-1 relative">
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center px-1">
                 {/* アイコン */}
                 <div
-                  className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl mb-2 transition-all ${
+                  className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-full flex items-center justify-center text-base sm:text-xl lg:text-2xl mb-1 sm:mb-2 transition-all ${
                     isCompleted
                       ? 'bg-green-500 text-white'
                       : isActive
@@ -44,18 +44,19 @@ function ProgressSteps({ status }: { status: JobStatus }) {
 
                 {/* ラベル */}
                 <div
-                  className={`text-sm font-medium text-center ${
+                  className={`text-xs sm:text-sm font-medium text-center px-1 ${
                     isCompleted || isActive ? 'text-gray-900' : 'text-gray-400'
                   }`}
                 >
-                  {step.label}
+                  <span className="hidden sm:inline">{step.label}</span>
+                  <span className="sm:hidden">{step.shortLabel}</span>
                 </div>
               </div>
 
               {/* 接続線 */}
               {index < steps.length - 1 && (
                 <div
-                  className={`absolute top-8 left-1/2 w-full h-1 -z-10 transition-all ${
+                  className={`absolute top-5 sm:top-6 lg:top-8 left-1/2 w-full h-0.5 sm:h-1 -z-10 transition-all ${
                     isCompleted ? 'bg-green-500' : 'bg-gray-200'
                   }`}
                   style={{ transform: 'translateY(-50%)' }}
@@ -188,15 +189,15 @@ export default function JobDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="max-w-4xl mx-auto">
           {/* 戻るボタン */}
           <button
             onClick={() => router.push('/jobs')}
-            className="mb-6 text-blue-600 hover:text-blue-800 font-medium flex items-center"
+            className="mb-4 sm:mb-6 text-blue-600 hover:text-blue-800 active:text-blue-900 font-medium flex items-center touch-manipulation py-2 px-3 text-sm sm:text-base"
           >
             <svg
-              className="w-5 h-5 mr-2"
+              className="w-4 h-4 sm:w-5 sm:h-5 mr-2"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -212,11 +213,11 @@ export default function JobDetailPage() {
           </button>
 
           {/* ヘッダー */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
               ジョブ詳細
             </h1>
-            <p className="text-gray-600 text-sm font-mono">
+            <p className="text-gray-600 text-xs sm:text-sm font-mono break-all">
               ID: {jobId}
             </p>
           </div>
@@ -259,9 +260,9 @@ export default function JobDetailPage() {
           {!loading && job && (
             <>
               {/* ステータスカード */}
-              <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-gray-900">
+              <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 lg:p-8 mb-4 sm:mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">
                     処理ステータス
                   </h2>
                   <StatusBadge status={job.status} />
@@ -363,76 +364,76 @@ export default function JobDetailPage() {
               </div>
 
               {/* ジョブ詳細情報 */}
-              <div className="bg-white rounded-lg shadow-xl p-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">
+              <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 lg:p-8">
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-4 sm:mb-6">
                   ジョブ情報
                 </h2>
 
-                <div className="space-y-4">
-                  <div className="flex items-start border-b border-gray-200 pb-4">
-                    <div className="w-1/3 text-gray-600 font-medium">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start border-b border-gray-200 pb-3 sm:pb-4 gap-1 sm:gap-0">
+                    <div className="sm:w-1/3 text-gray-600 font-medium text-sm sm:text-base">
                       ファイル名
                     </div>
-                    <div className="w-2/3 text-gray-900 break-all">
+                    <div className="sm:w-2/3 text-gray-900 break-all text-sm sm:text-base">
                       {job.videoFileName}
                     </div>
                   </div>
 
-                  <div className="flex items-start border-b border-gray-200 pb-4">
-                    <div className="w-1/3 text-gray-600 font-medium">
+                  <div className="flex flex-col sm:flex-row sm:items-start border-b border-gray-200 pb-3 sm:pb-4 gap-1 sm:gap-0">
+                    <div className="sm:w-1/3 text-gray-600 font-medium text-sm sm:text-base">
                       ファイルサイズ
                     </div>
-                    <div className="w-2/3 text-gray-900">
+                    <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
                       {formatFileSize(job.videoSize)}
                     </div>
                   </div>
 
-                  <div className="flex items-start border-b border-gray-200 pb-4">
-                    <div className="w-1/3 text-gray-600 font-medium">
+                  <div className="flex flex-col sm:flex-row sm:items-start border-b border-gray-200 pb-3 sm:pb-4 gap-1 sm:gap-0">
+                    <div className="sm:w-1/3 text-gray-600 font-medium text-sm sm:text-base">
                       作成日時
                     </div>
-                    <div className="w-2/3 text-gray-900">
+                    <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
                       {formatDate(job.createdAt)}
                     </div>
                   </div>
 
-                  <div className="flex items-start border-b border-gray-200 pb-4">
-                    <div className="w-1/3 text-gray-600 font-medium">
+                  <div className="flex flex-col sm:flex-row sm:items-start border-b border-gray-200 pb-3 sm:pb-4 gap-1 sm:gap-0">
+                    <div className="sm:w-1/3 text-gray-600 font-medium text-sm sm:text-base">
                       更新日時
                     </div>
-                    <div className="w-2/3 text-gray-900">
+                    <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
                       {formatDate(job.updatedAt)}
                     </div>
                   </div>
 
                   {job.metadata?.meetingTitle && (
-                    <div className="flex items-start border-b border-gray-200 pb-4">
-                      <div className="w-1/3 text-gray-600 font-medium">
+                    <div className="flex flex-col sm:flex-row sm:items-start border-b border-gray-200 pb-3 sm:pb-4 gap-1 sm:gap-0">
+                      <div className="sm:w-1/3 text-gray-600 font-medium text-sm sm:text-base">
                         会議タイトル
                       </div>
-                      <div className="w-2/3 text-gray-900">
+                      <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
                         {job.metadata.meetingTitle}
                       </div>
                     </div>
                   )}
 
                   {job.metadata?.meetingDate && (
-                    <div className="flex items-start border-b border-gray-200 pb-4">
-                      <div className="w-1/3 text-gray-600 font-medium">
+                    <div className="flex flex-col sm:flex-row sm:items-start border-b border-gray-200 pb-3 sm:pb-4 gap-1 sm:gap-0">
+                      <div className="sm:w-1/3 text-gray-600 font-medium text-sm sm:text-base">
                         会議日時
                       </div>
-                      <div className="w-2/3 text-gray-900">
+                      <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
                         {job.metadata.meetingDate}
                       </div>
                     </div>
                   )}
 
                   {job.metadata?.participants && job.metadata.participants.length > 0 && (
-                    <div className="flex items-start pb-4">
-                      <div className="w-1/3 text-gray-600 font-medium">
+                    <div className="flex flex-col sm:flex-row sm:items-start pb-3 sm:pb-4 gap-1 sm:gap-0">
+                      <div className="sm:w-1/3 text-gray-600 font-medium text-sm sm:text-base">
                         参加者
                       </div>
-                      <div className="w-2/3 text-gray-900">
+                      <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
                         {job.metadata.participants.join(', ')}
                       </div>
                     </div>

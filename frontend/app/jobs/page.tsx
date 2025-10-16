@@ -51,24 +51,26 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer p-6 border border-gray-200"
+      className="bg-white rounded-lg shadow hover:shadow-lg active:shadow-xl transition-shadow cursor-pointer p-4 sm:p-5 lg:p-6 border border-gray-200 touch-manipulation"
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 sm:mb-2 truncate">
             {job.videoFileName}
           </h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-xs sm:text-sm text-gray-500">
             {formatFileSize(job.videoSize)}
           </p>
         </div>
-        <StatusBadge status={job.status} />
+        <div className="flex-shrink-0">
+          <StatusBadge status={job.status} />
+        </div>
       </div>
 
-      <div className="space-y-2 text-sm text-gray-600">
+      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm text-gray-600">
         <div className="flex items-center">
           <svg
-            className="w-4 h-4 mr-2 text-gray-400"
+            className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-gray-400 flex-shrink-0"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -80,13 +82,13 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>作成日時: {formatDate(job.createdAt)}</span>
+          <span className="break-words">作成日時: {formatDate(job.createdAt)}</span>
         </div>
 
         {job.metadata?.meetingTitle && (
           <div className="flex items-center">
             <svg
-              className="w-4 h-4 mr-2 text-gray-400"
+              className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-gray-400 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -105,7 +107,7 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
         {job.errorMessage && (
           <div className="flex items-start mt-2 p-2 bg-red-50 rounded">
             <svg
-              className="w-4 h-4 mr-2 text-red-500 flex-shrink-0 mt-0.5"
+              className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-red-500 flex-shrink-0 mt-0.5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -117,16 +119,16 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-red-700 text-xs">{job.errorMessage}</span>
+            <span className="text-red-700 text-xs break-words">{job.errorMessage}</span>
           </div>
         )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+        <button className="text-blue-600 hover:text-blue-800 active:text-blue-900 text-xs sm:text-sm font-medium flex items-center touch-manipulation">
           詳細を見る
           <svg
-            className="w-4 h-4 ml-1"
+            className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-1"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -212,25 +214,25 @@ export default function JobsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="max-w-6xl mx-auto">
           {/* ヘッダー */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-1 sm:mb-2 truncate">
                   ジョブ一覧
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   処理中および完了したジョブの一覧
                 </p>
               </div>
               <button
                 onClick={() => router.push('/upload')}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center"
+                className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors flex items-center justify-center sm:justify-start touch-manipulation text-sm sm:text-base whitespace-nowrap"
               >
                 <svg
-                  className="w-5 h-5 mr-2"
+                  className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -250,10 +252,10 @@ export default function JobsPage() {
             <button
               onClick={() => fetchJobs(true)}
               disabled={loading}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center disabled:opacity-50"
+              className="text-blue-600 hover:text-blue-800 active:text-blue-900 text-xs sm:text-sm font-medium flex items-center disabled:opacity-50 touch-manipulation py-2 px-3"
             >
               <svg
-                className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`}
+                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 ${loading ? 'animate-spin' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -336,7 +338,7 @@ export default function JobsPage() {
 
           {!loading && jobs.length > 0 && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 lg:gap-6 mb-6">
                 {jobs.map((job) => (
                   <JobCard
                     key={job.jobId}
@@ -352,18 +354,18 @@ export default function JobsPage() {
                   <button
                     onClick={handleLoadMore}
                     disabled={loadingMore}
-                    className="bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3 px-8 rounded-lg shadow border border-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    className="bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 font-semibold py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg shadow border border-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center touch-manipulation text-sm sm:text-base"
                   >
                     {loadingMore ? (
                       <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-800 mr-2"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-gray-800 mr-2"></div>
                         読み込み中...
                       </>
                     ) : (
                       <>
                         さらに読み込む
                         <svg
-                          className="w-5 h-5 ml-2"
+                          className="w-4 h-4 sm:w-5 sm:h-5 ml-2"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
