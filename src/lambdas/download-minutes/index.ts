@@ -9,6 +9,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { NotFoundError, ValidationError, InternalServerError } from '../../utils/errors';
+import { getUserIdFromEvent } from '../../utils/auth';
 
 const logger = new Logger({ component: 'DownloadMinutesHandler' });
 const repository = new MeetingJobRepository(
@@ -75,11 +76,10 @@ export const handler = async (
             throw new ValidationError('jobId is required');
         }
 
-        // ユーザーIDを取得（Cognito認証から取得する想定）
-        // 現時点では認証が実装されていないため、クエリパラメータから取得
-        const userId = event.queryStringParameters?.userId;
+        // ユーザーIDを取得（Cognito認証から、またはクエリパラメータから）
+        const userId = getUserIdFromEvent(event) || event.queryStringParameters?.userId;
         if (!userId) {
-            throw new ValidationError('userId is required');
+            throw new ValidationError('認証が必要です');
         }
 
         // フォーマットを取得（デフォルト: markdown）

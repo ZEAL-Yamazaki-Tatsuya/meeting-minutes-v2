@@ -128,15 +128,11 @@ function UploadPageContent() {
     setUploadProgress(0);
 
     try {
-      // TODO: 実際のユーザーIDを取得（認証実装後）
-      const userId = 'test-user-id';
-
-      // Presigned URLを取得
+      // Presigned URLを取得（ユーザーIDはJWTトークンから自動取得）
       toast.loading('アップロードの準備中...');
       const { jobId, uploadUrl } = await apiService.getUploadUrl(
         file.name,
         file.size,
-        userId,
         file.type || 'video/mp4'
       );
 
@@ -153,7 +149,7 @@ function UploadPageContent() {
       // 処理を開始（Step Functionsワークフローを起動）
       toast.loading('処理を開始しています...');
       try {
-        await apiService.startProcessing(jobId, userId);
+        await apiService.startProcessing(jobId);
         toast.dismiss();
         toast.success('処理を開始しました！');
       } catch (error) {

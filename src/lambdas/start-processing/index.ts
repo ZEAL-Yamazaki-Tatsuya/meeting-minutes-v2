@@ -8,6 +8,7 @@ import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { ValidationError, NotFoundError, InternalServerError, AppError } from '../../utils/errors';
+import { getUserIdFromEvent } from '../../utils/auth';
 
 const logger = new Logger({ component: 'StartProcessingHandler' });
 
@@ -38,10 +39,10 @@ export async function handler(
       throw new ValidationError('jobIdが必要です');
     }
 
-    // クエリパラメータからuserIdを取得
-    const userId = event.queryStringParameters?.userId;
+    // ユーザーIDを取得（Cognito認証から、またはクエリパラメータから）
+    const userId = getUserIdFromEvent(event) || event.queryStringParameters?.userId;
     if (!userId) {
-      throw new ValidationError('userIdが必要です');
+      throw new ValidationError('認証が必要です');
     }
 
     // DynamoDBからジョブ情報を取得

@@ -30,7 +30,7 @@ interface UploadRequest {
   fileName: string;
   fileSize: number;
   contentType: string;
-  userId: string;
+  userId?: string; // オプション（後方互換性のため）
   metadata?: {
     meetingTitle?: string;
     meetingDate?: string;

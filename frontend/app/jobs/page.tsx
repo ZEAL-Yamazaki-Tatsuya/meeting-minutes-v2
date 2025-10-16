@@ -159,10 +159,7 @@ function JobsPageContent() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // TODO: 実際のユーザーIDを取得（Cognito統合後）
-  const userId = 'test-user-id';
-
-  // ジョブ一覧を取得
+  // ジョブ一覧を取得（ユーザーIDはJWTトークンから自動取得）
   const fetchJobs = async (reset = false) => {
     try {
       if (reset) {
@@ -174,7 +171,6 @@ function JobsPageContent() {
       }
 
       const response = await apiService.listJobs(
-        userId,
         reset ? undefined : lastEvaluatedKey
       );
 

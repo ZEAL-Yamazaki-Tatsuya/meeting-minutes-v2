@@ -15,20 +15,17 @@ class APIService {
    * アップロード用のPresigned URLを取得
    * @param fileName ファイル名
    * @param fileSize ファイルサイズ
-   * @param userId ユーザーID
    * @param contentType ファイルのMIMEタイプ
    * @returns ジョブIDとアップロードURL
    */
   async getUploadUrl(
     fileName: string,
     fileSize: number,
-    userId: string,
     contentType: string = 'video/mp4'
   ): Promise<UploadResponse> {
     const response = await apiClient.post<UploadResponse>('/api/upload', {
       fileName,
       fileSize,
-      userId,
       contentType,
     });
     return response.data;
@@ -65,27 +62,22 @@ class APIService {
   /**
    * ジョブステータスを取得
    * @param jobId ジョブID
-   * @param userId ユーザーID（オプション、デフォルトはtest-user-id）
    * @returns ジョブ情報
    */
-  async getJobStatus(jobId: string, userId: string = 'test-user-id'): Promise<Job> {
-    const response = await apiClient.get<{ success: boolean; data: Job }>(`/api/jobs/${jobId}`, {
-      params: { userId },
-    });
+  async getJobStatus(jobId: string): Promise<Job> {
+    const response = await apiClient.get<{ success: boolean; data: Job }>(`/api/jobs/${jobId}`);
     return response.data.data;
   }
 
   /**
    * ジョブ一覧を取得
-   * @param userId ユーザーID
    * @param lastEvaluatedKey ページネーション用のキー
    * @returns ジョブ一覧
    */
   async listJobs(
-    userId: string,
     lastEvaluatedKey?: string
   ): Promise<JobListResponse> {
-    const params: Record<string, string> = { userId };
+    const params: Record<string, string> = {};
     if (lastEvaluatedKey) {
       params.lastEvaluatedKey = lastEvaluatedKey;
     }
@@ -98,15 +90,11 @@ class APIService {
   /**
    * 議事録を取得
    * @param jobId ジョブID
-   * @param userId ユーザーID（オプション、デフォルトはtest-user-id）
    * @returns 議事録データ
    */
-  async getMinutes(jobId: string, userId: string = 'test-user-id'): Promise<Minutes> {
+  async getMinutes(jobId: string): Promise<Minutes> {
     const response = await apiClient.get<{ success: boolean; data: Minutes }>(
-      `/api/jobs/${jobId}/minutes`,
-      {
-        params: { userId },
-      }
+      `/api/jobs/${jobId}/minutes`
     );
     return response.data.data;
   }
@@ -115,18 +103,16 @@ class APIService {
    * 議事録のダウンロードURLを取得
    * @param jobId ジョブID
    * @param format ダウンロード形式（markdown, text）
-   * @param userId ユーザーID（オプション、デフォルトはtest-user-id）
    * @returns ダウンロードURL
    */
   async getDownloadUrl(
     jobId: string,
-    format: 'markdown' | 'text' = 'markdown',
-    userId: string = 'test-user-id'
+    format: 'markdown' | 'text' = 'markdown'
   ): Promise<string> {
     const response = await apiClient.get<{ success: boolean; data: { downloadUrl: string } }>(
       `/api/jobs/${jobId}/download`,
       {
-        params: { format, userId },
+        params: { format },
       }
     );
     return response.data.data.downloadUrl;
@@ -149,16 +135,11 @@ class APIService {
   /**
    * 処理を開始（Step Functionsワークフローを起動）
    * @param jobId ジョブID
-   * @param userId ユーザーID（オプション、デフォルトはtest-user-id）
    * @returns 処理開始結果
    */
-  async startProcessing(jobId: string, userId: string = 'test-user-id'): Promise<{ jobId: string; executionArn: string; message: string }> {
+  async startProcessing(jobId: string): Promise<{ jobId: string; executionArn: string; message: string }> {
     const response = await apiClient.post<{ success: boolean; data: { jobId: string; executionArn: string; message: string } }>(
-      `/api/jobs/${jobId}/start`,
-      {},
-      {
-        params: { userId },
-      }
+      `/api/jobs/${jobId}/start`
     );
     return response.data.data;
   }
