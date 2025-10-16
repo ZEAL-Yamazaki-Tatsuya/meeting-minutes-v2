@@ -4,12 +4,16 @@
   "description": "Automated meeting minutes generator from MP4 files",
   "scripts": {
     "build": "tsc",
-    "build:lambdas": "npm run build && pwsh scripts/build-lambdas.ps1",
+    "build:lambdas": "npm run build && powershell -ExecutionPolicy Bypass -File scripts/build-lambdas.ps1",
     "watch": "tsc -w",
     "test": "jest",
     "test:watch": "jest --watch",
     "cdk": "cdk",
     "deploy": "npm run build:lambdas && cdk deploy",
+    "deploy:frontend": "powershell -ExecutionPolicy Bypass -File scripts/deploy-frontend.ps1",
+    "deploy:amplify": "powershell -ExecutionPolicy Bypass -File scripts/deploy-amplify.ps1",
+    "deploy:all": "npm run deploy && npm run deploy:amplify",
+    "get-env": "powershell -ExecutionPolicy Bypass -File scripts/get-env-values.ps1",
     "synth": "npm run build:lambdas && cdk synth"
   },
   "devDependencies": {

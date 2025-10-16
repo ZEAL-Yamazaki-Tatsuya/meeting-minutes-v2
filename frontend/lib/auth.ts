@@ -102,14 +102,14 @@ export function getUser(): User | null {
 /**
  * JWTトークンをデコード
  */
-export function decodeJWT(token: string): any {
+export function decodeJWT(token: string): Record<string, unknown> | null {
   try {
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
       atob(base64)
         .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .map((c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
     return JSON.parse(jsonPayload);
@@ -123,7 +123,7 @@ export function decodeJWT(token: string): any {
  */
 export function isTokenExpired(token: string): boolean {
   const decoded = decodeJWT(token);
-  if (!decoded || !decoded.exp) return true;
+  if (!decoded || typeof decoded.exp !== 'number') return true;
   
   const currentTime = Math.floor(Date.now() / 1000);
   return decoded.exp < currentTime;
@@ -249,10 +249,14 @@ export async function signIn(email: string, password: string): Promise<User> {
   
   // IDトークンからユーザー情報を抽出
   const idTokenPayload = decodeJWT(tokens.idToken);
+  if (!idTokenPayload) {
+    throw new Error('Invalid ID token');
+  }
+  
   const user: User = {
-    userId: idTokenPayload.sub,
-    email: idTokenPayload.email,
-    name: idTokenPayload.name,
+    userId: idTokenPayload.sub as string,
+    email: idTokenPayload.email as string,
+    name: idTokenPayload.name as string | undefined,
   };
   
   saveUser(user);

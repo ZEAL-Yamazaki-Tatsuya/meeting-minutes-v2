@@ -195,6 +195,7 @@ function JobsPageContent() {
   // 初回読み込み
   useEffect(() => {
     fetchJobs(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ジョブ詳細ページへ遷移

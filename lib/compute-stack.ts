@@ -27,6 +27,7 @@ export class ComputeStack extends cdk.Stack {
   public readonly transcribeRole: iam.Role;
   public readonly stepFunctionsRole: iam.Role;
   public readonly api: apigateway.RestApi;
+  public readonly apiUrl: string;
   public readonly uploadHandler: lambda.Function;
   public readonly transcribeTrigger: lambda.Function;
   public readonly checkTranscribeStatus: lambda.Function;
@@ -526,8 +527,11 @@ export class ComputeStack extends cdk.Stack {
       exportName: `${appName}-stepfunctions-role-arn-${environment}`,
     });
 
+    // APIのURLを保存
+    this.apiUrl = this.api.url;
+
     new cdk.CfnOutput(this, 'ApiUrl', {
-      value: this.api.url,
+      value: this.apiUrl,
       description: 'API Gateway URL',
       exportName: `${appName}-api-url-${environment}`,
     });

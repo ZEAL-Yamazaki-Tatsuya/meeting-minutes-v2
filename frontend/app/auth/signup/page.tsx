@@ -36,9 +36,10 @@ export default function SignUpPage() {
       await signUp(email, password, name || undefined);
       toast.success('確認コードをメールで送信しました');
       setNeedsConfirmation(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('サインアップエラー:', error);
-      toast.error(error.message || 'サインアップに失敗しました');
+      const errorMessage = error instanceof Error ? error.message : 'サインアップに失敗しました';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -52,9 +53,10 @@ export default function SignUpPage() {
       await confirmSignUp(email, confirmationCode);
       toast.success('アカウントが確認されました。サインインしてください。');
       router.push('/auth/signin');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('確認エラー:', error);
-      toast.error(error.message || '確認に失敗しました');
+      const errorMessage = error instanceof Error ? error.message : '確認に失敗しました';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

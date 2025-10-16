@@ -21,9 +21,10 @@ export default function SignInPage() {
       await signIn(email, password);
       toast.success('サインインしました');
       router.push('/upload');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('サインインエラー:', error);
-      toast.error(error.message || 'サインインに失敗しました');
+      const errorMessage = error instanceof Error ? error.message : 'サインインに失敗しました';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
