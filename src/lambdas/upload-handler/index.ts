@@ -10,6 +10,7 @@ import { MeetingJobRepository } from '../../repositories/meeting-job-repository'
 import { Logger } from '../../utils/logger';
 import { ValidationError, InternalServerError, AppError } from '../../utils/errors';
 import { getUserIdFromEvent } from '../../utils/auth';
+import { withErrorHandler, recordErrorMetric } from '../../utils/error-handler';
 
 const logger = new Logger({ component: 'UploadHandler' });
 
@@ -112,113 +113,109 @@ async function generatePresignedUrl(
 }
 
 /**
- * Lambda ハンドラー
+ * メインハンドラーロジック
  */
-export async function handler(
+async function handleUpload(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
+  const startTime = Date.now();
+  
   logger.info('アップロードリクエスト受信', {
     path: event.path,
     method: event.httpMethod,
   });
 
-  try {
-    // リクエストボディのパース
-    if (!event.body) {
-      throw new ValidationError('リクエストボディが空です');
-    }
-
-    const request: UploadRequest = JSON.parse(event.body);
-
-    // ユーザーIDを取得（Cognito認証から、またはリクエストボディから）
-    const userId = getUserIdFromEvent(event) || request.userId;
-    
-    // 必須フィールドのチェック
-    if (!userId) {
-      throw new ValidationError('認証が必要です');
-    }
-    if (!request.fileName) {
-      throw new ValidationError('fileNameが必要です');
-    }
-    if (request.fileSize === undefined || request.fileSize === null) {
-      throw new ValidationError('fileSizeが必要です');
-    }
-    if (!request.contentType) {
-      throw new ValidationError('contentTypeが必要です');
-    }
-
-    // ファイルバリデーション
-    validateFile(request.fileName, request.fileSize, request.contentType);
-
-    // S3キーの生成（userId/jobId/fileName形式）
-    const timestamp = Date.now();
-    const sanitizedFileName = request.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const s3Key = `${userId}/${timestamp}_${sanitizedFileName}`;
-
-    // DynamoDBにジョブレコードを作成
-    const job = await jobRepository.createJob({
-      userId: userId,
-      videoFileName: request.fileName,
-      videoS3Key: s3Key,
-      videoSize: request.fileSize,
-      metadata: request.metadata,
-    });
-
-    logger.info('ジョブレコード作成成功', {
-      jobId: job.jobId,
-      userId: request.userId,
-    });
-
-    // Presigned URLを生成
-    const uploadUrl = await generatePresignedUrl(s3Key, request.contentType);
-
-    // レスポンスを返す
-    const response: UploadResponse = {
-      jobId: job.jobId,
-      uploadUrl,
-      expiresIn: 3600, // 1時間
-    };
-
-    logger.info('アップロードリクエスト処理成功', {
-      jobId: job.jobId,
-      userId: request.userId,
-    });
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify(response),
-    };
-  } catch (error) {
-    logger.error('アップロードリクエスト処理失敗', error as Error);
-
-    // エラーレスポンスを返す
-    if (error instanceof AppError) {
-      return {
-        statusCode: error.statusCode,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-          error: error.message,
-        }),
-      };
-    }
-
-    // 予期しないエラー
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        error: '予期しないエラーが発生しました',
-      }),
-    };
+  // リクエストボディのパース
+  if (!event.body) {
+    throw new ValidationError('リクエストボディが空です');
   }
+
+  const request: UploadRequest = JSON.parse(event.body);
+
+  // ユーザーIDを取得（Cognito認証から、またはリクエストボディから）
+  const userId = getUserIdFromEvent(event) || request.userId;
+  
+  // 必須フィールドのチェック
+  if (!userId) {
+    throw new ValidationError('認証が必要です');
+  }
+  if (!request.fileName) {
+    throw new ValidationError('fileNameが必要です');
+  }
+  if (request.fileSize === undefined || request.fileSize === null) {
+    throw new ValidationError('fileSizeが必要です');
+  }
+  if (!request.contentType) {
+    throw new ValidationError('contentTypeが必要です');
+  }
+
+  // ファイルバリデーション
+  validateFile(request.fileName, request.fileSize, request.contentType);
+
+  // S3キーの生成（userId/jobId/fileName形式）
+  const timestamp = Date.now();
+  const sanitizedFileName = request.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const s3Key = `${userId}/${timestamp}_${sanitizedFileName}`;
+
+  // DynamoDBにジョブレコードを作成
+  const job = await jobRepository.createJob({
+    userId: userId,
+    videoFileName: request.fileName,
+    videoS3Key: s3Key,
+    videoSize: request.fileSize,
+    metadata: request.metadata,
+  });
+
+  logger.info('ジョブレコード作成成功', {
+    jobId: job.jobId,
+    userId: userId,
+  });
+
+  // Presigned URLを生成
+  const uploadUrl = await generatePresignedUrl(s3Key, request.contentType);
+
+  // レスポンスを返す
+  const response: UploadResponse = {
+    jobId: job.jobId,
+    uploadUrl,
+    expiresIn: 3600, // 1時間
+  };
+
+  // 処理時間とメトリクスを記録
+  const duration = Date.now() - startTime;
+  logger.logApiRequest(event.httpMethod, event.path, 200, duration, {
+    jobId: job.jobId,
+    userId: userId,
+  });
+
+  // ビジネスメトリクス: アップロードされたファイルサイズ
+  logger.recordBusinessMetric('UploadFileSize', request.fileSize, 'Bytes', {
+    Component: 'UploadHandler',
+  });
+
+  // 成功メトリクスを記録
+  logger.recordSuccessMetric('UploadHandler', true, {
+    jobId: job.jobId,
+    userId: userId,
+  });
+
+  logger.info('アップロードリクエスト処理成功', {
+    jobId: job.jobId,
+    userId: userId,
+    duration,
+  });
+
+  return {
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    },
+    body: JSON.stringify(response),
+  };
 }
+
+/**
+ * Lambda ハンドラー（エラーハンドリングミドルウェアでラップ）
+ */
+export const handler = withErrorHandler(handleUpload, logger);

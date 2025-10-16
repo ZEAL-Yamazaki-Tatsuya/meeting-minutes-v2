@@ -13,6 +13,7 @@ import {
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { ValidationError, InternalServerError, AppError } from '../../utils/errors';
+import { handleStepFunctionError, recordErrorMetric } from '../../utils/error-handler';
 
 const logger = new Logger({ component: 'TranscribeTrigger' });
 
@@ -178,13 +179,20 @@ export async function handler(input: TranscribeTriggerInput): Promise<Transcribe
       transcribeJobName: result.transcribeJobName,
     });
 
+    // 成功メトリクスを記録
+    recordErrorMetric(new Error('Success'), 'TranscribeTrigger', logger);
+
     return result;
   } catch (error) {
-    logger.error('Transcribeトリガー実行失敗', error as Error, {
-      jobId: input.jobId,
-    });
+    const err = error as Error;
+    
+    // エラーメトリクスを記録
+    recordErrorMetric(err, 'TranscribeTrigger', logger);
 
-    // エラーを再スロー（Step Functionsがキャッチする）
-    throw error;
+    // Step Functions用のエラーハンドリング
+    await handleStepFunctionError(err, logger, {
+      jobId: input.jobId,
+      userId: input.userId,
+    });
   }
 }

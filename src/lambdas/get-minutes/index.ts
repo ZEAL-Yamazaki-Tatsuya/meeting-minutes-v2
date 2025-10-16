@@ -9,6 +9,7 @@ import { MeetingJobRepository } from '../../repositories/meeting-job-repository'
 import { Logger } from '../../utils/logger';
 import { NotFoundError, ValidationError, InternalServerError } from '../../utils/errors';
 import { getUserIdFromEvent } from '../../utils/auth';
+import { withErrorHandler } from '../../utils/error-handler';
 
 const logger = new Logger({ component: 'GetMinutesHandler' });
 const repository = new MeetingJobRepository(
@@ -136,139 +137,81 @@ async function getMinutesFromS3(s3Key: string, bucketName: string): Promise<stri
 }
 
 /**
- * Lambda handler
+ * メインハンドラーロジック
  */
-export const handler = async (
+async function getMinutes(
     event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+): Promise<APIGatewayProxyResult> {
     logger.info('Get minutes request received', {
         pathParameters: event.pathParameters,
     });
 
-    try {
-        // パスパラメータからjobIdを取得
-        const jobId = event.pathParameters?.jobId;
-        if (!jobId) {
-            throw new ValidationError('jobId is required');
-        }
-
-        // ユーザーIDを取得（Cognito認証から、またはクエリパラメータから）
-        const userId = getUserIdFromEvent(event) || event.queryStringParameters?.userId;
-        if (!userId) {
-            throw new ValidationError('認証が必要です');
-        }
-
-        // DynamoDBからジョブ情報を取得
-        const job = await repository.getJob(jobId, userId);
-
-        if (!job) {
-            throw new NotFoundError(`Job not found: ${jobId}`);
-        }
-
-        // ジョブのステータスを確認
-        if (job.status !== 'COMPLETED') {
-            return {
-                statusCode: 400,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Credentials': true,
-                },
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Bad Request',
-                    message: `Job is not completed yet. Current status: ${job.status}`,
-                }),
-            };
-        }
-
-        // 議事録のS3キーを確認
-        if (!job.minutesS3Key) {
-            throw new InternalServerError('Minutes S3 key is not set');
-        }
-
-        // S3から議事録を取得
-        const outputBucketName = process.env.OUTPUT_BUCKET_NAME;
-        if (!outputBucketName) {
-            throw new InternalServerError('OUTPUT_BUCKET_NAME environment variable is not set');
-        }
-
-        const minutesContent = await getMinutesFromS3(job.minutesS3Key, outputBucketName);
-
-        // Markdownから構造化データを抽出
-        const parsedMinutes = parseMarkdownMinutes(minutesContent);
-
-        logger.info('Minutes retrieved successfully', { jobId, userId });
-
-        return {
-            statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Credentials': true,
-            },
-            body: JSON.stringify({
-                success: true,
-                data: {
-                    jobId: job.jobId,
-                    userId: job.userId,
-                    generatedAt: job.updatedAt,
-                    summary: parsedMinutes.summary,
-                    decisions: parsedMinutes.decisions,
-                    nextActions: parsedMinutes.nextActions,
-                    transcript: parsedMinutes.transcript,
-                    speakers: parsedMinutes.speakers,
-                },
-            }),
-        };
-    } catch (error) {
-        logger.error('Error getting minutes', error as Error);
-
-        if (error instanceof NotFoundError) {
-            return {
-                statusCode: 404,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Credentials': true,
-                },
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Not Found',
-                    message: error.message,
-                }),
-            };
-        }
-
-        if (error instanceof ValidationError) {
-            return {
-                statusCode: 400,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Credentials': true,
-                },
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Bad Request',
-                    message: error.message,
-                }),
-            };
-        }
-
-        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-        return {
-            statusCode: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Credentials': true,
-            },
-            body: JSON.stringify({
-                success: false,
-                error: 'Internal Server Error',
-                message: errorMessage,
-            }),
-        };
+    // パスパラメータからjobIdを取得
+    const jobId = event.pathParameters?.jobId;
+    if (!jobId) {
+        throw new ValidationError('jobId is required');
     }
-};
+
+    // ユーザーIDを取得（Cognito認証から、またはクエリパラメータから）
+    const userId = getUserIdFromEvent(event) || event.queryStringParameters?.userId;
+    if (!userId) {
+        throw new ValidationError('認証が必要です');
+    }
+
+    // DynamoDBからジョブ情報を取得
+    const job = await repository.getJob(jobId, userId);
+
+    if (!job) {
+        throw new NotFoundError(`Job not found: ${jobId}`);
+    }
+
+    // ジョブのステータスを確認
+    if (job.status !== 'COMPLETED') {
+        throw new ValidationError(`Job is not completed yet. Current status: ${job.status}`);
+    }
+
+    // 議事録のS3キーを確認
+    if (!job.minutesS3Key) {
+        throw new InternalServerError('Minutes S3 key is not set');
+    }
+
+    // S3から議事録を取得
+    const outputBucketName = process.env.OUTPUT_BUCKET_NAME;
+    if (!outputBucketName) {
+        throw new InternalServerError('OUTPUT_BUCKET_NAME environment variable is not set');
+    }
+
+    const minutesContent = await getMinutesFromS3(job.minutesS3Key, outputBucketName);
+
+    // Markdownから構造化データを抽出
+    const parsedMinutes = parseMarkdownMinutes(minutesContent);
+
+    logger.info('Minutes retrieved successfully', { jobId, userId });
+
+    return {
+        statusCode: 200,
+        headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true',
+        },
+        body: JSON.stringify({
+            success: true,
+            data: {
+                jobId: job.jobId,
+                userId: job.userId,
+                generatedAt: job.updatedAt,
+                summary: parsedMinutes.summary,
+                decisions: parsedMinutes.decisions,
+                nextActions: parsedMinutes.nextActions,
+                transcript: parsedMinutes.transcript,
+                speakers: parsedMinutes.speakers,
+            },
+        }),
+    };
+}
+
+/**
+ * Lambda handler（エラーハンドリングミドルウェアでラップ）
+ */
+export const handler = withErrorHandler(getMinutes, logger);

@@ -11,6 +11,7 @@ import {
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { ValidationError, InternalServerError } from '../../utils/errors';
+import { handleStepFunctionError, recordErrorMetric } from '../../utils/error-handler';
 
 const logger = new Logger({ component: 'CheckTranscribeStatus' });
 
@@ -244,13 +245,21 @@ export async function handler(
       isComplete: result.isComplete,
     });
 
+    // 成功メトリクスを記録
+    recordErrorMetric(new Error('Success'), 'CheckTranscribeStatus', logger);
+
     return result;
   } catch (error) {
-    logger.error('Transcribeステータス確認実行失敗', error as Error, {
-      jobId: input.jobId,
-    });
+    const err = error as Error;
+    
+    // エラーメトリクスを記録
+    recordErrorMetric(err, 'CheckTranscribeStatus', logger);
 
-    // エラーを再スロー（Step Functionsがキャッチする）
-    throw error;
+    // Step Functions用のエラーハンドリング
+    await handleStepFunctionError(err, logger, {
+      jobId: input.jobId,
+      userId: input.userId,
+      transcribeJobName: input.transcribeJobName,
+    });
   }
 }

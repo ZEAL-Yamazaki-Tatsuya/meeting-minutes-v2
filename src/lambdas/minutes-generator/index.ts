@@ -9,6 +9,7 @@ import { BedrockClient } from '../../utils/bedrock-client';
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { Minutes } from '../../models/minutes';
+import { handleStepFunctionError, recordErrorMetric } from '../../utils/error-handler';
 
 const logger = new Logger({ lambda: 'minutes-generator' });
 
@@ -56,6 +57,7 @@ export interface MinutesGeneratorResult {
  */
 export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGeneratorResult> {
   const { jobId, userId, transcriptS3Key } = event;
+  const startTime = Date.now();
 
   logger.info('議事録生成を開始', { jobId, userId, transcriptS3Key });
 
@@ -64,6 +66,7 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
     await repository.updateJobStatus(jobId, userId, 'GENERATING');
 
     // 1. S3からTranscript JSONを取得して解析
+    const transcriptStartTime = Date.now();
     logger.info('Transcript JSONを取得中', { bucket: OUTPUT_BUCKET, transcriptS3Key });
     const transcribeOutput = await transcriptParser.fetchTranscriptFromS3(
       OUTPUT_BUCKET,
@@ -71,18 +74,27 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
     );
 
     const parsedTranscript = transcriptParser.parseTranscript(transcribeOutput);
-    logger.info('Transcriptの解析完了', {
+    logger.logDuration('Transcript解析完了', transcriptStartTime, {
       duration: parsedTranscript.duration,
       speakerCount: parsedTranscript.speakerCount,
       segmentCount: parsedTranscript.segments.length,
     });
 
     // 2. Bedrockを使用して議事録を生成
+    const bedrockStartTime = Date.now();
     logger.info('議事録生成を開始', { jobId });
     const minutes = await bedrockClient.generateMinutes(jobId, parsedTranscript);
-    logger.info('議事録生成完了', {
+    logger.logDuration('議事録生成完了', bedrockStartTime, {
       decisionsCount: minutes.decisions.length,
       nextActionsCount: minutes.nextActions.length,
+    });
+
+    // ビジネスメトリクス: 決定事項とネクストアクションの数
+    logger.recordBusinessMetric('DecisionsCount', minutes.decisions.length, 'Count', {
+      Component: 'MinutesGenerator',
+    });
+    logger.recordBusinessMetric('NextActionsCount', minutes.nextActions.length, 'Count', {
+      Component: 'MinutesGenerator',
     });
 
     // 3. 議事録をMarkdown形式でS3に保存
@@ -124,7 +136,19 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
       videoDuration: parsedTranscript.duration,
     });
 
-    logger.info('議事録生成処理が完了', { jobId, minutesS3Key });
+    // 全体の処理時間を記録
+    logger.logDuration('議事録生成処理が完了', startTime, { jobId, minutesS3Key });
+
+    // 成功メトリクスを記録
+    logger.recordSuccessMetric('MinutesGenerator', true, {
+      jobId,
+      userId,
+    });
+
+    // ビジネスメトリクス: 動画の長さ
+    logger.recordBusinessMetric('VideoDuration', parsedTranscript.duration, 'Seconds', {
+      Component: 'MinutesGenerator',
+    });
 
     return {
       jobId,
@@ -132,7 +156,20 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
       minutesS3Key,
     };
   } catch (error) {
-    logger.error('議事録生成処理に失敗', error as Error, { jobId, userId });
+    const err = error as Error;
+    
+    // 処理時間を記録（失敗時も）
+    logger.logDuration('議事録生成処理が失敗', startTime, { jobId, userId });
+
+    // 成功メトリクスを記録（失敗）
+    logger.recordSuccessMetric('MinutesGenerator', false, {
+      jobId,
+      userId,
+      errorType: err.name,
+    });
+
+    // エラーメトリクスを記録
+    recordErrorMetric(err, 'MinutesGenerator', logger);
 
     // エラー情報をDynamoDBに記録
     try {
@@ -140,13 +177,14 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
         jobId,
         userId,
         'FAILED',
-        `議事録生成エラー: ${(error as Error).message}`
+        `議事録生成エラー: ${err.message}`
       );
     } catch (updateError) {
       logger.error('ステータス更新に失敗', updateError as Error, { jobId, userId });
     }
 
-    throw error;
+    // Step Functions用のエラーハンドリング
+    await handleStepFunctionError(err, logger, { jobId, userId, transcriptS3Key });
   }
 }
 
