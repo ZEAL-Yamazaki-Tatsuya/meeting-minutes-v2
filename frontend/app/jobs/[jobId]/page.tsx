@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import apiService from '@/lib/api-service';
 import { Job, JobStatus } from '@/types';
+import ProtectedRoute from '@/components/protected-route';
 
 /**
  * ステータスに応じた進捗ステップを表示するコンポーネント
@@ -104,9 +105,9 @@ function LoadingSpinner() {
 }
 
 /**
- * ジョブ詳細ページ
+ * ジョブ詳細ページ（コンテンツ）
  */
-export default function JobDetailPage() {
+function JobDetailPageContent() {
   const params = useParams();
   const router = useRouter();
   const jobId = params.jobId as string;
@@ -445,5 +446,13 @@ export default function JobDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JobDetailPage() {
+  return (
+    <ProtectedRoute>
+      <JobDetailPageContent />
+    </ProtectedRoute>
   );
 }

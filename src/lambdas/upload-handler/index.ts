@@ -9,6 +9,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { ValidationError, InternalServerError, AppError } from '../../utils/errors';
+import { getUserIdFromEvent } from '../../utils/auth';
 
 const logger = new Logger({ component: 'UploadHandler' });
 
@@ -129,9 +130,12 @@ export async function handler(
 
     const request: UploadRequest = JSON.parse(event.body);
 
+    // ユーザーIDを取得（Cognito認証から、またはリクエストボディから）
+    const userId = getUserIdFromEvent(event) || request.userId;
+    
     // 必須フィールドのチェック
-    if (!request.userId) {
-      throw new ValidationError('userIdが必要です');
+    if (!userId) {
+      throw new ValidationError('認証が必要です');
     }
     if (!request.fileName) {
       throw new ValidationError('fileNameが必要です');
@@ -149,11 +153,11 @@ export async function handler(
     // S3キーの生成（userId/jobId/fileName形式）
     const timestamp = Date.now();
     const sanitizedFileName = request.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const s3Key = `${request.userId}/${timestamp}_${sanitizedFileName}`;
+    const s3Key = `${userId}/${timestamp}_${sanitizedFileName}`;
 
     // DynamoDBにジョブレコードを作成
     const job = await jobRepository.createJob({
-      userId: request.userId,
+      userId: userId,
       videoFileName: request.fileName,
       videoS3Key: s3Key,
       videoSize: request.fileSize,

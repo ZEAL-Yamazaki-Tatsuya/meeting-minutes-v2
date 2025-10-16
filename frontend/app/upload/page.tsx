@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import apiService from '@/lib/api-service';
 import { FILE_UPLOAD_CONFIG } from '@/lib/config';
+import ProtectedRoute from '@/components/protected-route';
 
 /**
  * ファイルアップロードページ
  */
-export default function UploadPage() {
+function UploadPageContent() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -363,5 +364,13 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <ProtectedRoute>
+      <UploadPageContent />
+    </ProtectedRoute>
   );
 }

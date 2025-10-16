@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { getAuthHeader } from './auth';
 
 // APIクライアントのインスタンスを作成
 const apiClient: AxiosInstance = axios.create({
@@ -9,14 +10,14 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// リクエストインターセプター（認証トークンの追加など）
+// リクエストインターセプター（認証トークンの追加）
 apiClient.interceptors.request.use(
-  (config) => {
-    // 将来的にCognitoトークンをここで追加
-    // const token = getAuthToken();
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+  async (config) => {
+    // Cognitoトークンを追加
+    const token = await getAuthHeader();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {

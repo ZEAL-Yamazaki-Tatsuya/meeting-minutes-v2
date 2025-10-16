@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
 import apiService from '@/lib/api-service';
 import { Minutes, Decision, NextAction } from '@/types';
+import ProtectedRoute from '@/components/protected-route';
 
 /**
  * ローディングスピナーコンポーネント
@@ -43,9 +44,9 @@ function SectionCard({
 }
 
 /**
- * 議事録表示ページ
+ * 議事録表示ページ（コンテンツ）
  */
-export default function MinutesPage() {
+function MinutesPageContent() {
   const params = useParams();
   const router = useRouter();
   const jobId = params.jobId as string;
@@ -742,5 +743,13 @@ export default function MinutesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MinutesPage() {
+  return (
+    <ProtectedRoute>
+      <MinutesPageContent />
+    </ProtectedRoute>
   );
 }

@@ -5,6 +5,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
@@ -18,6 +19,7 @@ export interface ComputeStackProps extends cdk.StackProps {
   outputBucket: s3.IBucket;
   jobsTable: dynamodb.ITable;
   corsAllowedOrigins?: string[];
+  userPoolArn?: string; // Cognito User Pool ARN（オプション）
 }
 
 export class ComputeStack extends cdk.Stack {
@@ -39,7 +41,7 @@ export class ComputeStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ComputeStackProps) {
     super(scope, id, props);
 
-    const { environment, appName, inputBucket, outputBucket, jobsTable, corsAllowedOrigins } = props;
+    const { environment, appName, inputBucket, outputBucket, jobsTable, corsAllowedOrigins, userPoolArn } = props;
 
     // IAM Role for Lambda functions
     this.lambdaExecutionRole = new iam.Role(this, 'LambdaExecutionRole', {
@@ -315,6 +317,17 @@ export class ComputeStack extends cdk.Stack {
       cloudWatchRole: true,
     });
 
+    // Cognito Authorizer（オプション）
+    let authorizer: apigateway.CognitoUserPoolsAuthorizer | undefined;
+    if (userPoolArn) {
+      const userPool = cognito.UserPool.fromUserPoolArn(this, 'ImportedUserPool', userPoolArn);
+      authorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
+        cognitoUserPools: [userPool],
+        authorizerName: `${appName}-authorizer-${environment}`,
+        identitySource: 'method.request.header.Authorization',
+      });
+    }
+
     // /api リソース
     const apiResource = this.api.root.addResource('api');
 
@@ -334,6 +347,8 @@ export class ComputeStack extends cdk.Stack {
         proxy: true,
       }),
       {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
         methodResponses: [
           {
             statusCode: '200',
@@ -360,7 +375,11 @@ export class ComputeStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(this.listJobsHandler, {
         proxy: true,
-      })
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
     );
 
     // GET /api/jobs/{jobId} エンドポイント - ジョブステータス取得
@@ -377,7 +396,11 @@ export class ComputeStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(this.getJobStatusHandler, {
         proxy: true,
-      })
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
     );
 
     // GET /api/jobs/{jobId}/minutes エンドポイント - 議事録取得
@@ -394,7 +417,11 @@ export class ComputeStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(this.getMinutesHandler, {
         proxy: true,
-      })
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
     );
 
     // GET /api/jobs/{jobId}/download エンドポイント - ダウンロードURL生成
@@ -411,7 +438,11 @@ export class ComputeStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(this.downloadMinutesHandler, {
         proxy: true,
-      })
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
     );
 
     // Start Processing Lambda専用のIAMロール（循環依存を回避）
@@ -469,7 +500,11 @@ export class ComputeStack extends cdk.Stack {
       'POST',
       new apigateway.LambdaIntegration(this.startProcessingHandler, {
         proxy: true,
-      })
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
     );
 
     // CloudFormation Outputs

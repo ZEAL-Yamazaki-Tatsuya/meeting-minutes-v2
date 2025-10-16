@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import apiService from '@/lib/api-service';
 import { Job, JobStatus } from '@/types';
+import ProtectedRoute from '@/components/protected-route';
 
 /**
  * ジョブステータスに応じたバッジを表示するコンポーネント
@@ -147,9 +148,9 @@ function JobCard({ job, onClick }: { job: Job; onClick: () => void }) {
 }
 
 /**
- * ジョブ一覧ページ
+ * ジョブ一覧ページ（コンテンツ）
  */
-export default function JobsPage() {
+function JobsPageContent() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -387,5 +388,13 @@ export default function JobsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <ProtectedRoute>
+      <JobsPageContent />
+    </ProtectedRoute>
   );
 }

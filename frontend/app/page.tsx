@@ -1,9 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Home() {
   const router = useRouter();
+  const { isAuthenticated, user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -11,6 +13,36 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           {/* ヘッダー */}
           <div className="text-center mb-8 sm:mb-10 lg:mb-12">
+            <div className="flex justify-end mb-4">
+              {isAuthenticated ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-600">
+                    {user?.email}
+                  </span>
+                  <button
+                    onClick={signOut}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    サインアウト
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => router.push('/auth/signin')}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    サインイン
+                  </button>
+                  <button
+                    onClick={() => router.push('/auth/signup')}
+                    className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+                  >
+                    新規登録
+                  </button>
+                </div>
+              )}
+            </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 sm:mb-4 px-2">
               Meeting Minutes Generator
             </h1>

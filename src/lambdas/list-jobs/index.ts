@@ -7,6 +7,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { ValidationError } from '../../utils/errors';
+import { getUserIdFromEvent } from '../../utils/auth';
 
 const logger = new Logger({ component: 'ListJobsHandler' });
 const repository = new MeetingJobRepository(
@@ -24,11 +25,10 @@ export const handler = async (
     });
 
     try {
-        // ユーザーIDを取得（Cognito認証から取得する想定）
-        // 現時点では認証が実装されていないため、クエリパラメータから取得
-        const userId = event.queryStringParameters?.userId;
+        // ユーザーIDを取得（Cognito認証から、またはクエリパラメータから）
+        const userId = getUserIdFromEvent(event) || event.queryStringParameters?.userId;
         if (!userId) {
-            throw new ValidationError('userId is required');
+            throw new ValidationError('認証が必要です');
         }
 
         // ページネーションパラメータを取得
