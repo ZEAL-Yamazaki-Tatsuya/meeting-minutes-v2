@@ -157,7 +157,7 @@ export default function JobsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   // TODO: 実際のユーザーIDを取得（Cognito統合後）
-  const userId = 'test-user-001';
+  const userId = 'test-user-id';
 
   // ジョブ一覧を取得
   const fetchJobs = async (reset = false) => {

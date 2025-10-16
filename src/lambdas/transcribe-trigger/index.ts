@@ -71,7 +71,8 @@ async function startTranscriptionJob(
 ): Promise<TranscribeTriggerOutput> {
   const transcribeJobName = generateTranscribeJobName(input.jobId);
   const mediaUri = generateS3Uri(INPUT_BUCKET_NAME, input.videoS3Key);
-  const outputKey = `${input.userId}/${input.jobId}/transcript.json`;
+  // AWS Transcribeは自動的に.jsonを追加するため、拡張子なしで指定
+  const outputKey = `${input.userId}/${input.jobId}/transcript`;
 
   logger.info('Transcribeジョブ開始準備', {
     jobId: input.jobId,

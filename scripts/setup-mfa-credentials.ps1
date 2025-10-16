@@ -1,4 +1,4 @@
-# MFA認証を使用してAWS一時認証情報を取得し、環境変数に設定するスクリプト
+﻿# MFA認証を使用してAWS一時認証情報を取得し、環境変数に設定するスクリプト
 
 param(
     [Parameter(Mandatory=$true)]
@@ -34,13 +34,17 @@ try {
     $env:AWS_SECRET_ACCESS_KEY = $credentials.Credentials.SecretAccessKey
     $env:AWS_SESSION_TOKEN = $credentials.Credentials.SessionToken
     
-    Write-Host "`n✓ 認証情報を環境変数に設定しました" -ForegroundColor Green
-    Write-Host "`n有効期限: $($credentials.Credentials.Expiration)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host " 認証情報を環境変数に設定しました" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "有効期限: $($credentials.Credentials.Expiration)" -ForegroundColor Yellow
     
-    Write-Host "`n以下のコマンドで環境変数を確認できます:" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "以下のコマンドで環境変数を確認できます:" -ForegroundColor Cyan
     Write-Host "  echo `$env:AWS_ACCESS_KEY_ID"
     
-    Write-Host "`n注意: これらの環境変数は現在のPowerShellセッションでのみ有効です" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "注意: これらの環境変数は現在のPowerShellセッションでのみ有効です" -ForegroundColor Yellow
     
 } catch {
     Write-Host "エラー: $_" -ForegroundColor Red

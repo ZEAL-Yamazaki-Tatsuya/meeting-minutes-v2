@@ -88,7 +88,26 @@ async function checkTranscriptionStatus(
         }
 
         // S3 URIからキーを抽出
-        const transcriptS3Key = `${input.userId}/${input.jobId}/transcript.json`;
+        // 形式: https://s3.region.amazonaws.com/bucket-name/key または s3://bucket-name/key
+        let transcriptS3Key: string;
+        
+        if (transcriptFileUri.startsWith('s3://')) {
+          // s3://bucket-name/key 形式
+          const parts = transcriptFileUri.replace('s3://', '').split('/');
+          transcriptS3Key = parts.slice(1).join('/');
+        } else if (transcriptFileUri.startsWith('https://')) {
+          // https://s3.region.amazonaws.com/bucket-name/key 形式
+          const url = new URL(transcriptFileUri);
+          transcriptS3Key = url.pathname.substring(1); // 先頭の/を削除
+        } else {
+          // フォールバック: 期待されるキーを使用
+          transcriptS3Key = `${input.userId}/${input.jobId}/transcript.json`;
+        }
+
+        logger.info('TranscriptファイルのS3キーを抽出', {
+          transcriptFileUri,
+          transcriptS3Key,
+        });
 
         // DynamoDBを更新（ステータスをGENERATINGに変更）
         await jobRepository.updateJob({
