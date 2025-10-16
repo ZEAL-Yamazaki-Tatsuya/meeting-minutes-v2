@@ -256,7 +256,7 @@ export async function handler(
     recordErrorMetric(err, 'CheckTranscribeStatus', logger);
 
     // Step Functions用のエラーハンドリング
-    await handleStepFunctionError(err, logger, {
+    return await handleStepFunctionError(err, logger, {
       jobId: input.jobId,
       userId: input.userId,
       transcribeJobName: input.transcribeJobName,

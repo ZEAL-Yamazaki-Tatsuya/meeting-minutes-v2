@@ -184,7 +184,7 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
     }
 
     // Step Functions用のエラーハンドリング
-    await handleStepFunctionError(err, logger, { jobId, userId, transcriptS3Key });
+    return await handleStepFunctionError(err, logger, { jobId, userId, transcriptS3Key });
   }
 }
 

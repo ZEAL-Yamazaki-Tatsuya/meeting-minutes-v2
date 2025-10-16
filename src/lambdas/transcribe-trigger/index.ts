@@ -190,7 +190,7 @@ export async function handler(input: TranscribeTriggerInput): Promise<Transcribe
     recordErrorMetric(err, 'TranscribeTrigger', logger);
 
     // Step Functions用のエラーハンドリング
-    await handleStepFunctionError(err, logger, {
+    return await handleStepFunctionError(err, logger, {
       jobId: input.jobId,
       userId: input.userId,
     });
