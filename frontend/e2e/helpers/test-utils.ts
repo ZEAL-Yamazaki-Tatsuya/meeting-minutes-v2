@@ -5,19 +5,30 @@ import { Page } from '@playwright/test';
  */
 
 /**
- * 認証済みのセッションを作成する
+ * 認証済みのセッションを作成する（モック）
  */
 export async function authenticateUser(page: Page) {
-  // 認証が実装されている場合、ここでログイン処理を実行
-  await page.goto('/auth/signin');
+  // ホームページに移動
+  await page.goto('/');
   
-  // テストユーザーでログイン
-  await page.fill('input[name="email"]', 'test@example.com');
-  await page.fill('input[name="password"]', 'testpassword123');
-  await page.click('button[type="submit"]');
+  // 有効期限を未来に設定したモックトークンを作成
+  const futureTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1時間後
+  const mockIdToken = `header.${btoa(JSON.stringify({
+    sub: 'test-user-123',
+    email: 'test@example.com',
+    exp: futureTimestamp
+  }))}.signature`;
   
-  // ログイン完了を待機
-  await page.waitForURL('/');
+  // ローカルストレージに認証情報を設定
+  await page.evaluate((token) => {
+    localStorage.setItem('cognito_id_token', token);
+    localStorage.setItem('cognito_access_token', token);
+    localStorage.setItem('cognito_refresh_token', token);
+    localStorage.setItem('cognito_user', JSON.stringify({ 
+      email: 'test@example.com',
+      userId: 'test-user-123'
+    }));
+  }, mockIdToken);
 }
 
 /**
