@@ -114,22 +114,22 @@ class APIService {
   /**
    * 議事録のダウンロードURLを取得
    * @param jobId ジョブID
-   * @param format ダウンロード形式（markdown, pdf, text）
+   * @param format ダウンロード形式（markdown, text）
    * @param userId ユーザーID（オプション、デフォルトはtest-user-id）
    * @returns ダウンロードURL
    */
   async getDownloadUrl(
     jobId: string,
-    format: 'markdown' | 'pdf' | 'text' = 'markdown',
+    format: 'markdown' | 'text' = 'markdown',
     userId: string = 'test-user-id'
   ): Promise<string> {
-    const response = await apiClient.get<{ downloadUrl: string }>(
+    const response = await apiClient.get<{ success: boolean; data: { downloadUrl: string } }>(
       `/api/jobs/${jobId}/download`,
       {
         params: { format, userId },
       }
     );
-    return response.data.downloadUrl;
+    return response.data.data.downloadUrl;
   }
 
   /**

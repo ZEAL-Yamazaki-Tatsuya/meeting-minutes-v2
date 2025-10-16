@@ -322,13 +322,6 @@ export default function MinutesPage() {
                         Markdown (.md)
                       </button>
                       <button
-                        onClick={() => handleDownload('pdf')}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center border-t border-gray-100"
-                      >
-                        <span className="mr-3">📕</span>
-                        PDF (.pdf)
-                      </button>
-                      <button
                         onClick={() => handleDownload('text')}
                         className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center border-t border-gray-100 rounded-b-lg"
                       >
