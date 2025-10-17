@@ -65,6 +65,13 @@ describe('Download Minutes Lambda Handler', () => {
         return {
             pathParameters: { jobId },
             queryStringParameters: Object.keys(queryParams).length > 0 ? queryParams : null,
+            requestContext: {
+                authorizer: {
+                    claims: {
+                        sub: userId || '',
+                    },
+                },
+            },
         } as any;
     }
 
@@ -156,6 +163,26 @@ describe('Download Minutes Lambda Handler', () => {
             const body = JSON.parse(result.body);
             expect(body.data.fileName).toContain('test-video_minutes');
         });
+
+        it('日本語ファイル名を含むジョブでもダウンロードURLを正常に生成できる', async () => {
+            const japaneseJob = {
+                ...mockJob,
+                videoFileName: '営業支援AI関連 隔週MTG-20251017_110031-会議の録音.mp4',
+            };
+
+            dynamoMock.on(GetCommand).resolves({
+                Item: japaneseJob,
+            });
+
+            const event = createMockEvent(mockJobId, mockUserId);
+            const result = await handler(event);
+
+            expect(result.statusCode).toBe(200);
+            const body = JSON.parse(result.body);
+            expect(body.success).toBe(true);
+            expect(body.data.downloadUrl).toBeDefined();
+            expect(body.data.fileName).toContain('営業支援AI関連 隔週MTG-20251017_110031-会議の録音_minutes');
+        });
     });
 
     describe('異常系 - バリデーションエラー', () => {
@@ -168,8 +195,7 @@ describe('Download Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(400);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Bad Request');
-            expect(body.message).toContain('jobId is required');
+            expect(body.error.message).toContain('jobId is required');
         });
 
         it('userIdが指定されていない場合は400エラーを返す', async () => {
@@ -180,8 +206,7 @@ describe('Download Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(400);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Bad Request');
-            expect(body.message).toContain('userId is required');
+            expect(body.error.message).toContain('認証が必要です');
         });
 
         it('サポートされていないフォーマットの場合は400エラーを返す', async () => {
@@ -195,8 +220,7 @@ describe('Download Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(400);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Bad Request');
-            expect(body.message).toContain('Unsupported format');
+            expect(body.error.message).toContain('Unsupported format');
         });
     });
 
@@ -212,8 +236,7 @@ describe('Download Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(404);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Not Found');
-            expect(body.message).toContain('Job not found');
+            expect(body.error.message).toContain('Job not found');
         });
     });
 
@@ -234,9 +257,8 @@ describe('Download Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(400);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Bad Request');
-            expect(body.message).toContain('Job is not completed yet');
-            expect(body.message).toContain('TRANSCRIBING');
+            expect(body.error.message).toContain('Job is not completed yet');
+            expect(body.error.message).toContain('TRANSCRIBING');
         });
 
         it('minutesS3Keyが設定されていない場合は500エラーを返す', async () => {
@@ -255,7 +277,7 @@ describe('Download Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(500);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Internal Server Error');
+            expect(body.error.message).toContain('Minutes S3 key is not set');
         });
     });
 
@@ -269,7 +291,7 @@ describe('Download Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(500);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Internal Server Error');
+            expect(body.error.message).toContain('Failed to get job');
         });
     });
 
@@ -283,7 +305,7 @@ describe('Download Minutes Lambda Handler', () => {
             const result = await handler(event);
 
             expect(result.headers).toHaveProperty('Access-Control-Allow-Origin', '*');
-            expect(result.headers).toHaveProperty('Access-Control-Allow-Credentials', true);
+            expect(result.headers).toHaveProperty('Access-Control-Allow-Credentials', 'true');
             expect(result.headers).toHaveProperty('Content-Type', 'application/json');
         });
     });

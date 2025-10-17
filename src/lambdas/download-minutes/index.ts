@@ -22,6 +22,17 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION });
 type DownloadFormat = 'markdown' | 'md' | 'text' | 'txt';
 
 /**
+ * ファイル名をRFC 5987形式でエンコードする
+ * 日本語などの非ASCII文字を含むファイル名をHTTPヘッダーで安全に使用できるようにする
+ */
+function encodeRFC5987(fileName: string): string {
+    // RFC 5987: filename*=UTF-8''encoded-filename
+    return encodeURIComponent(fileName)
+        .replace(/['()]/g, escape) // 特殊文字をエスケープ
+        .replace(/\*/g, '%2A');
+}
+
+/**
  * Presigned URLを生成する
  */
 async function generatePresignedUrl(
@@ -40,10 +51,19 @@ async function generatePresignedUrl(
             contentType = 'text/plain';
         }
 
+        const fullFileName = `${fileName}.${extension}`;
+        
+        // RFC 5987形式でファイル名をエンコード
+        // ASCII文字のみの場合は通常のfilename、非ASCII文字がある場合はfilename*を使用
+        const hasNonAscii = /[^\x00-\x7F]/.test(fullFileName);
+        const contentDisposition = hasNonAscii
+            ? `attachment; filename="${encodeRFC5987(fullFileName)}"; filename*=UTF-8''${encodeRFC5987(fullFileName)}`
+            : `attachment; filename="${fullFileName}"`;
+
         const command = new GetObjectCommand({
             Bucket: bucketName,
             Key: s3Key,
-            ResponseContentDisposition: `attachment; filename="${fileName}.${extension}"`,
+            ResponseContentDisposition: contentDisposition,
             ResponseContentType: contentType,
         });
 
