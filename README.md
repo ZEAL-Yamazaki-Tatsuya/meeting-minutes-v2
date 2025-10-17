@@ -2,14 +2,44 @@
 
 MP4形式の会議録画ファイルから、AWS Transcribe（音声文字起こし）とAmazon Bedrock（生成AI）を使用して、自動的に構造化された議事録を生成するサーバーレスアプリケーションです。
 
+## 📚 ドキュメント
+
+### エンドユーザー向け
+- **[クイックスタートガイド](docs/QUICK_START.md)** - 5分で始める議事録自動生成
+- **[ユーザーガイド](docs/USER_GUIDE.md)** - 詳細な使い方とトラブルシューティング
+
+### 開発者向け
+- **[アーキテクチャ](ARCHITECTURE.md)** - システム設計の詳細
+- **[セットアップガイド](SETUP_COMPLETE.md)** - 開発環境のセットアップ
+- **[コスト管理](docs/COST_MANAGEMENT.md)** - コスト監視と最適化
+
+### デプロイ関連
+- **[Amplifyデプロイ](docs/AMPLIFY_DEPLOYMENT.md)** - フロントエンドのデプロイ方法
+- **[GitHub連携](docs/GITHUB_AMPLIFY_SETUP.md)** - CI/CDの設定
+
+## 🚀 クイックアクセス
+
+### アプリケーションURL
+
+⚠️ **重要:** このアプリケーションはIP制限がかかっています。アクセスするには**ジールのVPNに接続**する必要があります。
+
+```
+https://main.d1iv2q5yh6oc7s.amplifyapp.com
+```
+
+### 管理コンソール
+- [Amplify Console](https://console.aws.amazon.com/amplify/home?region=ap-northeast-1#/d1iv2q5yh6oc7s)
+- [Cost Explorer](https://console.aws.amazon.com/cost-management/home?region=ap-northeast-1#/cost-explorer)
+- [CloudWatch Logs](https://console.aws.amazon.com/cloudwatch/home?region=ap-northeast-1#logsV2:log-groups)
+
 ## 主な機能
 
 - 📤 **ファイルアップロード**: ドラッグ&ドロップまたはファイル選択でMP4ファイルをアップロード
-- 🎤 **自動文字起こし**: AWS Transcribeによる高精度な音声認識と話者識別
-- 🤖 **AI議事録生成**: Amazon Bedrockを使用して、概要・決定事項・ネクストアクションを自動抽出
+- 🎤 **自動文字起こし**: AWS Transcribeによる高精度な音声認識
+- 🤖 **AI議事録生成**: Amazon Bedrock（Claude 3.5 Sonnet）で構造化された議事録を自動生成
 - 📊 **リアルタイム進捗表示**: 処理状況をリアルタイムで確認
-- 📝 **議事録編集**: 生成された議事録をブラウザ上で編集可能
-- 💾 **複数形式ダウンロード**: Markdown、PDF、テキスト形式でダウンロード
+- 💾 **Markdownダウンロード**: 生成された議事録をダウンロード
+- 🔐 **認証機能**: Amazon Cognitoによるユーザー認証
 
 ## アーキテクチャ
 
