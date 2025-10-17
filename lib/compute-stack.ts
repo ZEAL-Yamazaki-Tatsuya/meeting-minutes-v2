@@ -51,6 +51,7 @@ export class ComputeStack extends cdk.Stack {
       description: 'Execution role for Meeting Minutes Generator Lambda functions',
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXRayDaemonWriteAccess'), // X-Rayトレーシング用
       ],
     });
 
@@ -154,6 +155,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'Presigned URLを生成し、ジョブレコードを作成する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -174,6 +176,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'AWS Transcribeジョブを開始し、話者識別を有効化する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -194,6 +197,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'Transcribeジョブのステータスをポーリングし、DynamoDBを更新する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -214,6 +218,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: '指定されたジョブIDのステータス情報を取得する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -234,6 +239,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'ユーザーのジョブ一覧を取得する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -254,6 +260,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 512,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: '指定されたジョブIDの議事録を取得する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -274,6 +281,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: '議事録のダウンロードURL（Presigned URL）を生成する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -294,6 +302,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 512,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: '文字起こし結果から議事録を生成してS3に保存する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,
@@ -453,6 +462,7 @@ export class ComputeStack extends cdk.Stack {
       description: 'Execution role for Start Processing Lambda',
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXRayDaemonWriteAccess'), // X-Rayトレーシング用
       ],
     });
 
@@ -476,6 +486,7 @@ export class ComputeStack extends cdk.Stack {
       memorySize: 256,
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'S3アップロード完了後にStep Functionsワークフローを起動する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
       bundling: {
         minify: false,
         sourceMap: true,

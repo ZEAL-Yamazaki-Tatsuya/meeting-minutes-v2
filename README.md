@@ -12,6 +12,7 @@ MP4形式の会議録画ファイルから、AWS Transcribe（音声文字起こ
 - **[アーキテクチャ](ARCHITECTURE.md)** - システム設計の詳細
 - **[セットアップガイド](SETUP_COMPLETE.md)** - 開発環境のセットアップ
 - **[コスト管理](docs/COST_MANAGEMENT.md)** - コスト監視と最適化
+- **[モニタリング](docs/MONITORING.md)** - CloudWatchとX-Rayの設定
 
 ### デプロイ関連
 - **[Amplifyデプロイ](docs/AMPLIFY_DEPLOYMENT.md)** - フロントエンドのデプロイ方法

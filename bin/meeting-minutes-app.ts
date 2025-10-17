@@ -7,6 +7,7 @@ import { ComputeStack } from '../lib/compute-stack';
 import { AuthStack } from '../lib/auth-stack';
 import { FrontendStack } from '../lib/frontend-stack';
 import { AmplifyFrontendStack } from '../lib/amplify-frontend-stack';
+import { MonitoringStack } from '../lib/monitoring-stack';
 
 // Load environment variables
 dotenv.config();
@@ -51,6 +52,28 @@ const computeStack = new ComputeStack(app, `${appName}-compute-${environment}`, 
   userPoolArn: authStack.userPool.userPoolArn, // Cognito認証を有効化
   description: 'Compute resources for Meeting Minutes Generator (Lambda, Step Functions)',
 });
+
+// モニタリングスタック（CloudWatch、X-Ray）
+const monitoringStack = new MonitoringStack(app, `${appName}-monitoring-${environment}`, {
+  env,
+  environment,
+  appName,
+  uploadHandler: computeStack.uploadHandler,
+  transcribeTrigger: computeStack.transcribeTrigger,
+  checkTranscribeStatus: computeStack.checkTranscribeStatus,
+  minutesGeneratorHandler: computeStack.minutesGeneratorHandler,
+  getJobStatusHandler: computeStack.getJobStatusHandler,
+  listJobsHandler: computeStack.listJobsHandler,
+  getMinutesHandler: computeStack.getMinutesHandler,
+  downloadMinutesHandler: computeStack.downloadMinutesHandler,
+  startProcessingHandler: computeStack.startProcessingHandler,
+  api: computeStack.api,
+  stateMachine: computeStack.stateMachine,
+  alertEmail: process.env.ALERT_EMAIL, // アラート通知先メールアドレス
+  description: 'Monitoring resources for Meeting Minutes Generator (CloudWatch, X-Ray)',
+});
+
+monitoringStack.addDependency(computeStack);
 
 // フロントエンドスタック（Amplify または CloudFront + S3）
 if (useAmplify) {
