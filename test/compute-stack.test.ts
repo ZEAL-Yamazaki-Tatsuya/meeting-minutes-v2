@@ -35,24 +35,42 @@ describe('ComputeStack', () => {
 
   test('creates Lambda execution role', () => {
     template.hasResourceProperties('AWS::IAM::Role', {
-      AssumedBy: {
-        Service: 'lambda.amazonaws.com',
+      AssumeRolePolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Principal: {
+              Service: 'lambda.amazonaws.com',
+            },
+          }),
+        ]),
       },
     });
   });
 
   test('creates Transcribe role', () => {
     template.hasResourceProperties('AWS::IAM::Role', {
-      AssumedBy: {
-        Service: 'transcribe.amazonaws.com',
+      AssumeRolePolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Principal: {
+              Service: 'transcribe.amazonaws.com',
+            },
+          }),
+        ]),
       },
     });
   });
 
   test('creates Step Functions role', () => {
     template.hasResourceProperties('AWS::IAM::Role', {
-      AssumedBy: {
-        Service: 'states.amazonaws.com',
+      AssumeRolePolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Principal: {
+              Service: 'states.amazonaws.com',
+            },
+          }),
+        ]),
       },
     });
   });

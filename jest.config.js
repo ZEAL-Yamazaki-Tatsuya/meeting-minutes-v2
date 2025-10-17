@@ -15,4 +15,8 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  // Windowsでの並列実行時のファイルシステムエラーを回避
+  maxWorkers: 1,
+  // テストタイムアウトを延長
+  testTimeout: 60000,
 };

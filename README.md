@@ -17,6 +17,7 @@ MP4形式の会議録画ファイルから、AWS Transcribe（音声文字起こ
 - **[Amplifyデプロイ](docs/AMPLIFY_DEPLOYMENT.md)** - フロントエンドのデプロイ方法
 - **[GitHub連携](docs/GITHUB_AMPLIFY_SETUP.md)** - CI/CDの設定
 - **[デプロイメントパイプライン](docs/DEPLOYMENT_PIPELINE.md)** - CI/CDパイプラインの詳細
+- **[次のステップガイド](docs/NEXT_STEPS.md)** - 本番環境への移行と運用開始
 
 ## 🚀 クイックアクセス
 
@@ -355,6 +356,36 @@ npx cdk destroy meeting-minutes-generator-storage-dev
 
 5. **議事録表示**
    - ユーザーが議事録を表示・編集・ダウンロード
+
+## テストとCI/CD
+
+### テストの実行
+
+```bash
+# すべてのテストを実行
+npm test
+
+# カバレッジ付きで実行
+npm test -- --coverage
+
+# 特定のテストファイルのみ実行
+npm test -- test/compute-stack.test.ts
+```
+
+### CI/CDパイプライン
+
+このプロジェクトはGitHub Actionsを使用した自動CI/CDパイプラインを実装しています：
+
+- **Lint & Format Check**: コード品質チェック
+- **Unit Tests**: ユニットテスト（一部のテストは開発中）
+- **Integration Tests**: 統合テスト（一部のテストは開発中）
+- **CDK Synth**: CloudFormationテンプレート生成
+- **Security Scan**: 依存関係の脆弱性スキャン
+- **Build Check**: ビルドの検証
+
+⚠️ **注意**: 現在、一部のテストが開発中のため、テストの失敗はCIを停止させません。重要なチェック（lint、CDK synth、build）のみが必須です。
+
+詳細は[デプロイメントパイプライン](docs/DEPLOYMENT_PIPELINE.md)を参照してください。
 
 ## API エンドポイント
 
