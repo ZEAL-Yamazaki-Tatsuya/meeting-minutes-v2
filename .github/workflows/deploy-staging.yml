@@ -1,0 +1,229 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-1
+  NODE_VERSION: '18'
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run backend unit tests
+        run: npm test
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test -- --run
+      
+      - name: Build TypeScript
+        run: npm run build
+
+  deploy-backend:
+    name: Deploy Backend to Staging
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Lambda functions
+        run: npm run build:lambdas
+      
+      - name: Deploy CDK stacks to staging
+        run: |
+          npx cdk deploy \
+            meeting-minutes-generator-storage-staging \
+            meeting-minutes-generator-auth-staging \
+            meeting-minutes-generator-compute-staging \
+            --require-approval never \
+            --context environment=staging
+      
+      - name: Get API outputs
+        id: api-outputs
+        run: |
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name meeting-minutes-generator-compute-staging \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+            --output text)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          
+          USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name meeting-minutes-generator-auth-staging \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+          echo "user_pool_id=$USER_POOL_ID" >> $GITHUB_OUTPUT
+          
+          CLIENT_ID=$(aws cloudformation describe-stacks \
+            --stack-name meeting-minutes-generator-auth-staging \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --output text)
+          echo "client_id=$CLIENT_ID" >> $GITHUB_OUTPUT
+    
+    outputs:
+      api_url: ${{ steps.api-outputs.outputs.api_url }}
+      user_pool_id: ${{ steps.api-outputs.outputs.user_pool_id }}
+      client_id: ${{ steps.api-outputs.outputs.client_id }}
+
+  deploy-frontend:
+    name: Deploy Frontend to Staging
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Create frontend .env.local
+        working-directory: ./frontend
+        run: |
+          cat > .env.local << EOF
+          NEXT_PUBLIC_API_URL=${{ needs.deploy-backend.outputs.api_url }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID=${{ needs.deploy-backend.outputs.user_pool_id }}
+          NEXT_PUBLIC_COGNITO_CLIENT_ID=${{ needs.deploy-backend.outputs.client_id }}
+          NEXT_PUBLIC_AWS_REGION=${{ env.AWS_REGION }}
+          EOF
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      
+      - name: Deploy Amplify stack
+        run: |
+          npx cdk deploy meeting-minutes-generator-amplify-staging \
+            --require-approval never \
+            --context environment=staging \
+            --context githubRepo=${{ secrets.GITHUB_REPO }} \
+            --context githubBranch=develop \
+            --context githubToken=${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Get Amplify App URL
+        id: amplify-url
+        run: |
+          AMPLIFY_URL=$(aws cloudformation describe-stacks \
+            --stack-name meeting-minutes-generator-amplify-staging \
+            --query "Stacks[0].Outputs[?OutputKey=='AmplifyAppUrl'].OutputValue" \
+            --output text)
+          echo "amplify_url=$AMPLIFY_URL" >> $GITHUB_OUTPUT
+          echo "Amplify URL: $AMPLIFY_URL"
+    
+    outputs:
+      amplify_url: ${{ steps.amplify-url.outputs.amplify_url }}
+
+  e2e-tests:
+    name: Run E2E Tests
+    needs: deploy-frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run E2E tests
+        working-directory: ./frontend
+        env:
+          BASE_URL: ${{ needs.deploy-frontend.outputs.amplify_url }}
+        run: npm run test:e2e
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-staging
+          path: frontend/playwright-report/
+          retention-days: 30
+
+  notify:
+    name: Notify Deployment Status
+    needs: [deploy-backend, deploy-frontend, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Deployment Success
+        if: ${{ needs.e2e-tests.result == 'success' }}
+        run: |
+          echo "✅ Staging deployment successful!"
+          echo "Frontend URL: ${{ needs.deploy-frontend.outputs.amplify_url }}"
+          echo "API URL: ${{ needs.deploy-backend.outputs.api_url }}"
+      
+      - name: Deployment Failed
+        if: ${{ needs.e2e-tests.result != 'success' }}
+        run: |
+          echo "❌ Staging deployment failed!"
+          exit 1

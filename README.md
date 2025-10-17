@@ -16,6 +16,7 @@ MP4形式の会議録画ファイルから、AWS Transcribe（音声文字起こ
 ### デプロイ関連
 - **[Amplifyデプロイ](docs/AMPLIFY_DEPLOYMENT.md)** - フロントエンドのデプロイ方法
 - **[GitHub連携](docs/GITHUB_AMPLIFY_SETUP.md)** - CI/CDの設定
+- **[デプロイメントパイプライン](docs/DEPLOYMENT_PIPELINE.md)** - CI/CDパイプラインの詳細
 
 ## 🚀 クイックアクセス
 
