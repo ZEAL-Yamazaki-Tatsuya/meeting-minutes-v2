@@ -16,6 +16,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 const logger = new Logger({ module: 'bedrock-client' });
 
+export interface MeetingContext {
+  meetingType?: string; // 会議の種類（例：定例会議、プロジェクト会議、ブレスト等）
+  attendees?: string[]; // 出席者リスト
+  focusAreas?: string[]; // 重点的に整理したい項目（例：決定事項、アクション、課題等）
+  additionalInstructions?: string; // 追加の指示
+}
+
 export interface BedrockClientConfig {
   modelId?: string;
   maxRetries?: number;
@@ -30,7 +37,7 @@ export class BedrockClient {
 
   constructor(config: BedrockClientConfig = {}) {
     this.client = new BedrockRuntimeClient({});
-    // Inference Profile IDを使用（APACリージョンのClaude 3.5 Sonnet v2）
+    // Claude 3.5 Sonnet v2を使用（より高精度なモデル）
     this.modelId = config.modelId || process.env.BEDROCK_MODEL_ID || 'apac.anthropic.claude-3-5-sonnet-20241022-v2:0';
     this.maxRetries = config.maxRetries || 3;
     this.retryDelay = config.retryDelay || 1000;
@@ -41,17 +48,19 @@ export class BedrockClient {
    */
   async generateMinutes(
     jobId: string,
-    parsedTranscript: ParsedTranscript
+    parsedTranscript: ParsedTranscript,
+    meetingContext?: MeetingContext
   ): Promise<Minutes> {
     try {
       logger.info('議事録生成を開始', {
         jobId,
         transcriptLength: parsedTranscript.fullText.length,
         speakerCount: parsedTranscript.speakerCount,
+        meetingContext,
       });
 
-      // プロンプトを構築
-      const prompt = this.buildPrompt(parsedTranscript);
+      // プロンプトを構築（会議コンテキストを含む）
+      const prompt = this.buildPrompt(parsedTranscript, meetingContext);
 
       // LLMを呼び出し（リトライロジック付き）
       const llmResponse = await this.invokeModelWithRetry(prompt);
@@ -75,7 +84,7 @@ export class BedrockClient {
   /**
    * プロンプトテンプレートを構築する
    */
-  private buildPrompt(parsedTranscript: ParsedTranscript): string {
+  private buildPrompt(parsedTranscript: ParsedTranscript, meetingContext?: MeetingContext): string {
     // 話者情報付きのテキストを構築
     let transcriptText = '';
 
@@ -88,8 +97,32 @@ export class BedrockClient {
       transcriptText = parsedTranscript.fullText;
     }
 
-    const prompt = `以下は会議の文字起こしテキストです。このテキストを分析して、構造化された議事録を生成してください。
+    // 会議コンテキスト情報を構築
+    let contextSection = '';
+    if (meetingContext) {
+      contextSection = '\n# 会議情報\n\n';
 
+      if (meetingContext.meetingType) {
+        contextSection += `- **会議の種類**: ${meetingContext.meetingType}\n`;
+      }
+
+      if (meetingContext.attendees && meetingContext.attendees.length > 0) {
+        contextSection += `- **出席者**: ${meetingContext.attendees.join('、')}\n`;
+      }
+
+      if (meetingContext.focusAreas && meetingContext.focusAreas.length > 0) {
+        contextSection += `- **重点整理項目**: ${meetingContext.focusAreas.join('、')}\n`;
+      }
+
+      if (meetingContext.additionalInstructions) {
+        contextSection += `- **追加指示**: ${meetingContext.additionalInstructions}\n`;
+      }
+
+      contextSection += '\n';
+    }
+
+    const prompt = `以下は会議の文字起こしテキストです。このテキストを分析して、構造化された議事録を生成してください。
+${contextSection}
 # 文字起こしテキスト
 
 ${transcriptText}
@@ -100,15 +133,23 @@ ${transcriptText}
 
 1. **概要（summary）**: 会議の主要なトピックと目的を2-3文で簡潔にまとめてください。
 
-2. **決定事項（decisions）**: 会議中に決定された事項をリストアップしてください。各決定事項には以下を含めてください：
-   - description: 決定内容の説明
-   - timestamp: 該当する発言のタイムスタンプ（可能な場合）
+2. **決定事項（decisions）**: 会議中に決定された事項を**すべて**リストアップしてください。以下の点に注意してください：
+   - 明示的な決定だけでなく、暗黙的な合意や方針決定も含めてください
+   - 「〜することにした」「〜で進める」「〜に決定」などの表現を見逃さないでください
+   - 小さな決定事項も漏らさず記録してください
+   - 各決定事項には以下を含めてください：
+     * description: 決定内容の具体的な説明（できるだけ詳細に）
+     * timestamp: 該当する発言のタイムスタンプ
 
-3. **ネクストアクション（nextActions）**: 今後のアクションアイテムをリストアップしてください。各アクションには以下を含めてください：
-   - description: アクションの説明
-   - assignee: 担当者（明示されている場合）
-   - dueDate: 期限（明示されている場合、YYYY-MM-DD形式）
-   - timestamp: 該当する発言のタイムスタンプ（可能な場合）
+3. **ネクストアクション（nextActions）**: 今後のアクションアイテムを**すべて**リストアップしてください。以下の点に注意してください：
+   - 明示的なタスクだけでなく、「〜を確認する」「〜を検討する」「〜を調べる」なども含めてください
+   - 担当者が明示されていない場合でも、文脈から推測できる場合は記載してください
+   - 期限が明示されていない場合でも、「次回まで」「来週まで」などの表現があれば記録してください
+   - 各アクションには以下を含めてください：
+     * description: アクションの具体的な説明（5W1Hを意識して詳細に）
+     * assignee: 担当者（明示または推測可能な場合）
+     * dueDate: 期限（明示されている場合、YYYY-MM-DD形式）
+     * timestamp: 該当する発言のタイムスタンプ
 
 # 出力形式
 
@@ -119,13 +160,13 @@ ${transcriptText}
   "summary": "会議の概要をここに記述",
   "decisions": [
     {
-      "description": "決定事項の説明",
+      "description": "決定事項の具体的な説明",
       "timestamp": "[HH:MM:SS]"
     }
   ],
   "nextActions": [
     {
-      "description": "アクションの説明",
+      "description": "アクションの具体的な説明",
       "assignee": "担当者名",
       "dueDate": "YYYY-MM-DD",
       "timestamp": "[HH:MM:SS]"
@@ -135,9 +176,11 @@ ${transcriptText}
 \`\`\`
 
 重要な注意事項：
-- 決定事項やアクションアイテムが明確でない場合は、空の配列を返してください
+- **決定事項とネクストアクションは可能な限りすべて抽出してください。漏れがないように注意してください。**
+- 決定事項やアクションアイテムが本当に存在しない場合のみ、空の配列を返してください
 - 担当者や期限が明示されていない場合は、そのフィールドを省略してください
 - タイムスタンプは [HH:MM:SS] 形式で記述してください
+- 各項目の説明は具体的かつ詳細に記述してください（誰が、何を、いつ、どのように、なぜ）
 - JSON形式のみを出力し、他の説明文は含めないでください`;
 
     return prompt;

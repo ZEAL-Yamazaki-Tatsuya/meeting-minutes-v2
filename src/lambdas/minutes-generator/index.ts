@@ -44,6 +44,12 @@ export interface MinutesGeneratorEvent {
   jobId: string;
   userId: string;
   transcriptS3Key: string;
+  meetingContext?: {
+    meetingType?: string;
+    attendees?: string[];
+    focusAreas?: string[];
+    additionalInstructions?: string;
+  };
 }
 
 export interface MinutesGeneratorResult {
@@ -56,10 +62,10 @@ export interface MinutesGeneratorResult {
  * Lambda handler
  */
 export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGeneratorResult> {
-  const { jobId, userId, transcriptS3Key } = event;
+  const { jobId, userId, transcriptS3Key, meetingContext } = event;
   const startTime = Date.now();
 
-  logger.info('議事録生成を開始', { jobId, userId, transcriptS3Key });
+  logger.info('議事録生成を開始', { jobId, userId, transcriptS3Key, meetingContext });
 
   try {
     // ステータスを GENERATING に更新
@@ -80,10 +86,10 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
       segmentCount: parsedTranscript.segments.length,
     });
 
-    // 2. Bedrockを使用して議事録を生成
+    // 2. Bedrockを使用して議事録を生成（会議コンテキストを含む）
     const bedrockStartTime = Date.now();
-    logger.info('議事録生成を開始', { jobId });
-    const minutes = await bedrockClient.generateMinutes(jobId, parsedTranscript);
+    logger.info('議事録生成を開始', { jobId, meetingContext });
+    const minutes = await bedrockClient.generateMinutes(jobId, parsedTranscript, meetingContext);
     logger.logDuration('議事録生成完了', bedrockStartTime, {
       decisionsCount: minutes.decisions.length,
       nextActionsCount: minutes.nextActions.length,

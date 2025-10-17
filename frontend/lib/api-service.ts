@@ -16,17 +16,32 @@ class APIService {
    * @param fileName ファイル名
    * @param fileSize ファイルサイズ
    * @param contentType ファイルのMIMEタイプ
+   * @param metadata メタデータ（オプション）
+   * @param meetingContext 会議コンテキスト（オプション）
    * @returns ジョブIDとアップロードURL
    */
   async getUploadUrl(
     fileName: string,
     fileSize: number,
-    contentType: string = 'video/mp4'
+    contentType: string = 'video/mp4',
+    metadata?: {
+      meetingTitle?: string;
+      meetingDate?: string;
+      participants?: string[];
+    },
+    meetingContext?: {
+      meetingType?: string;
+      attendees?: string[];
+      focusAreas?: string[];
+      additionalInstructions?: string;
+    }
   ): Promise<UploadResponse> {
     const response = await apiClient.post<UploadResponse>('/api/upload', {
       fileName,
       fileSize,
       contentType,
+      metadata,
+      meetingContext,
     });
     return response.data;
   }

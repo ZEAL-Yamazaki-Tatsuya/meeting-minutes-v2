@@ -16,6 +16,13 @@ export interface MeetingJobMetadata {
   participants?: string[];
 }
 
+export interface MeetingContext {
+  meetingType?: string; // 会議の種類（例：定例会議、プロジェクト会議、ブレスト等）
+  attendees?: string[]; // 出席者リスト
+  focusAreas?: string[]; // 重点的に整理したい項目
+  additionalInstructions?: string; // 追加の指示
+}
+
 export interface MeetingJob {
   jobId: string;              // Partition Key (UUID)
   userId: string;             // Sort Key
@@ -40,6 +47,9 @@ export interface MeetingJob {
   // メタデータ
   metadata?: MeetingJobMetadata;
 
+  // 会議コンテキスト（議事録生成の精度向上用）
+  meetingContext?: MeetingContext;
+
   // TTL for automatic cleanup (optional)
   ttl?: number;
 }
@@ -50,6 +60,7 @@ export interface CreateMeetingJobInput {
   videoS3Key: string;
   videoSize: number;
   metadata?: MeetingJobMetadata;
+  meetingContext?: MeetingContext;
 }
 
 export interface UpdateMeetingJobInput {

@@ -37,6 +37,12 @@ interface UploadRequest {
     meetingDate?: string;
     participants?: string[];
   };
+  meetingContext?: {
+    meetingType?: string; // 会議の種類（例：定例会議、プロジェクト会議、ブレスト等）
+    attendees?: string[]; // 出席者リスト
+    focusAreas?: string[]; // 重点的に整理したい項目
+    additionalInstructions?: string; // 追加の指示
+  };
 }
 
 /**
@@ -157,13 +163,14 @@ async function handleUpload(
   const sanitizedFileName = request.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const s3Key = `${userId}/${timestamp}_${sanitizedFileName}`;
 
-  // DynamoDBにジョブレコードを作成
+  // DynamoDBにジョブレコードを作成（会議コンテキストを含む）
   const job = await jobRepository.createJob({
     userId: userId,
     videoFileName: request.fileName,
     videoS3Key: s3Key,
     videoSize: request.fileSize,
     metadata: request.metadata,
+    meetingContext: request.meetingContext,
   });
 
   logger.info('ジョブレコード作成成功', {

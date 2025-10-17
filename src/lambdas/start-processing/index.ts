@@ -64,7 +64,7 @@ export async function handler(
       );
     }
 
-    // Step Functionsの入力データを準備
+    // Step Functionsの入力データを準備（会議コンテキストを含む）
     const input = {
       jobId: job.jobId,
       userId: job.userId,
@@ -72,6 +72,7 @@ export async function handler(
       bucketName: INPUT_BUCKET_NAME,
       fileName: job.videoFileName,
       fileSize: job.videoSize,
+      meetingContext: job.meetingContext, // 会議コンテキストを追加
     };
 
     // Step Functionsワークフローを起動

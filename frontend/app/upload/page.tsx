@@ -17,6 +17,12 @@ function UploadPageContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [validationError, setValidationError] = useState<string | null>(null);
+  
+  // 会議コンテキスト（オプション）
+  const [meetingType, setMeetingType] = useState('');
+  const [attendees, setAttendees] = useState('');
+  const [focusAreas, setFocusAreas] = useState<string[]>([]);
+  const [additionalInstructions, setAdditionalInstructions] = useState('');
 
   /**
    * ファイルバリデーション
@@ -128,12 +134,22 @@ function UploadPageContent() {
     setUploadProgress(0);
 
     try {
+      // 会議コンテキストを準備
+      const meetingContext = (meetingType || attendees || focusAreas.length > 0 || additionalInstructions) ? {
+        meetingType: meetingType || undefined,
+        attendees: attendees ? attendees.split(',').map(a => a.trim()).filter(a => a) : undefined,
+        focusAreas: focusAreas.length > 0 ? focusAreas : undefined,
+        additionalInstructions: additionalInstructions || undefined,
+      } : undefined;
+
       // Presigned URLを取得（ユーザーIDはJWTトークンから自動取得）
       toast.loading('アップロードの準備中...');
       const { jobId, uploadUrl } = await apiService.getUploadUrl(
         file.name,
         file.size,
-        file.type || 'video/mp4'
+        file.type || 'video/mp4',
+        undefined,
+        meetingContext
       );
 
       // S3に直接アップロード
@@ -326,6 +342,88 @@ function UploadPageContent() {
                     className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
                   ></div>
+                </div>
+              </div>
+            )}
+
+            {/* 会議コンテキスト（オプション） */}
+            {file && !isUploading && (
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                  会議情報（オプション）- 議事録の精度向上
+                </h3>
+                <p className="text-xs text-gray-600 mb-4">
+                  以下の情報を入力すると、より正確で詳細な議事録が生成されます
+                </p>
+                
+                <div className="space-y-4">
+                  {/* 会議の種類 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      会議の種類
+                    </label>
+                    <input
+                      type="text"
+                      value={meetingType}
+                      onChange={(e) => setMeetingType(e.target.value)}
+                      placeholder="例：定例会議、プロジェクト会議、ブレスト"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* 出席者 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      出席者（カンマ区切り）
+                    </label>
+                    <input
+                      type="text"
+                      value={attendees}
+                      onChange={(e) => setAttendees(e.target.value)}
+                      placeholder="例：田中、佐藤、鈴木"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* 重点整理項目 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      重点的に整理したい項目
+                    </label>
+                    <div className="space-y-2">
+                      {['決定事項', 'ネクストアクション', '課題・リスク', '議論のポイント'].map((area) => (
+                        <label key={area} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={focusAreas.includes(area)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFocusAreas([...focusAreas, area]);
+                              } else {
+                                setFocusAreas(focusAreas.filter(a => a !== area));
+                              }
+                            }}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">{area}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 追加の指示 */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      追加の指示
+                    </label>
+                    <textarea
+                      value={additionalInstructions}
+                      onChange={(e) => setAdditionalInstructions(e.target.value)}
+                      placeholder="例：技術的な詳細を重視してください"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
                 </div>
               </div>
             )}

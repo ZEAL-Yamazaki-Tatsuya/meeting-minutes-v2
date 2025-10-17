@@ -58,6 +58,7 @@ export class MeetingJobRepository {
             videoS3Key: input.videoS3Key,
             videoSize: input.videoSize,
             metadata: input.metadata,
+            meetingContext: input.meetingContext,
         };
 
         try {
