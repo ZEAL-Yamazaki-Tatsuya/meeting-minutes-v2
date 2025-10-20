@@ -627,21 +627,15 @@ function MinutesPageContent() {
                             </ReactMarkdown>
                           </div>
                           <div className="flex flex-wrap gap-2 sm:gap-4 mt-2 text-xs sm:text-sm">
-                            {action.assignee && (
-                              <span className="text-gray-600 break-words">
-                                <strong>担当者:</strong> {action.assignee}
-                              </span>
-                            )}
-                            {action.dueDate && (
-                              <span className="text-gray-600 break-words">
-                                <strong>期限:</strong> {action.dueDate}
-                              </span>
-                            )}
-                            {action.timestamp && (
-                              <span className="text-gray-500 break-words">
-                                タイムスタンプ: {action.timestamp}
-                              </span>
-                            )}
+                            <span className="text-gray-600 break-words">
+                              <strong>担当者:</strong> {action.assignee || '不明'}
+                            </span>
+                            <span className="text-gray-600 break-words">
+                              <strong>期限:</strong> {action.dueDate || '不明'}
+                            </span>
+                            <span className="text-gray-500 break-words">
+                              <strong>タイムスタンプ:</strong> {action.timestamp || '不明'}
+                            </span>
                           </div>
                         </div>
                       </li>
@@ -705,7 +699,7 @@ function MinutesPageContent() {
                 {showTranscript && (
                   <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-64 sm:max-h-80 lg:max-h-96 overflow-y-auto">
                     <pre className="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-mono break-words">
-                      {minutes.transcript}
+                      {minutes.formattedTranscript || minutes.transcript}
                     </pre>
                   </div>
                 )}

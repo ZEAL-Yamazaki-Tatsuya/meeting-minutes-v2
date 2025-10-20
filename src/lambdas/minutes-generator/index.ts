@@ -103,8 +103,9 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
       Component: 'MinutesGenerator',
     });
 
-    // 3. 整形されたTranscriptを生成
+    // 3. 整形されたTranscriptを生成してminutesオブジェクトに追加
     const formattedTranscript = transcriptParser.formatTranscript(parsedTranscript);
+    minutes.formattedTranscript = formattedTranscript;
 
     // 4. 議事録をMarkdown形式でS3に保存（整形されたTranscriptを含む）
     const minutesS3Key = `${userId}/${jobId}/minutes.md`;

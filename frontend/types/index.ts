@@ -59,6 +59,7 @@ export interface Minutes {
   decisions: Decision[];
   nextActions: NextAction[];
   transcript: string;
+  formattedTranscript?: string; // 整形された文字起こし（話者・タイムスタンプ付き）
   speakers?: Speaker[];
 }
 

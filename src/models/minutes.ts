@@ -13,7 +13,8 @@ export interface Minutes {
   nextActions: NextAction[];    // ネクストアクション
 
   // 元データ
-  transcript: string;           // 文字起こし全文
+  transcript: string;           // 文字起こし全文（生テキスト）
+  formattedTranscript?: string; // 整形された文字起こし（話者・タイムスタンプ付き）
   speakers?: Speaker[];         // 話者情報
 }
 
