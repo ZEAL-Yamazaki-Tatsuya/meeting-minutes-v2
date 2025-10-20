@@ -41,7 +41,7 @@ export class TranscriptParser {
         throw new InternalServerError('S3オブジェクトが空です');
       }
 
-      const bodyString = await response.Body.transformToString();
+      const bodyString = await response.Body.transformToString('utf-8');
       const transcribeOutput = JSON.parse(bodyString) as TranscribeOutput;
 
       logger.info('Transcript JSONの取得に成功', {
