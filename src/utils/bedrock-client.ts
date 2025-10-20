@@ -61,9 +61,21 @@ export class BedrockClient {
 
       // プロンプトを構築（会議コンテキストを含む）
       const prompt = this.buildPrompt(parsedTranscript, meetingContext);
+      
+      // デバッグ: プロンプトの最初の500文字をログ出力
+      logger.info('LLMに送信するプロンプト（抜粋）', {
+        promptPreview: prompt.substring(0, 500),
+        promptLength: prompt.length,
+      });
 
       // LLMを呼び出し（リトライロジック付き）
       const llmResponse = await this.invokeModelWithRetry(prompt);
+      
+      // デバッグ: LLMレスポンスをログ出力
+      logger.info('LLMからのレスポンス', {
+        response: llmResponse.substring(0, 1000), // 最初の1000文字
+        responseLength: llmResponse.length,
+      });
 
       // レスポンスをパースしてMinutesオブジェクトに変換
       const minutes = this.parseResponse(jobId, llmResponse, parsedTranscript);
@@ -340,6 +352,14 @@ ${transcriptText}
       }
 
       const llmMinutes: LLMMinutesResponse = JSON.parse(jsonText);
+      
+      // デバッグ: パースされたLLMレスポンスをログ出力
+      logger.info('パースされたLLMレスポンス', {
+        decisionsCount: llmMinutes.decisions.length,
+        nextActionsCount: llmMinutes.nextActions.length,
+        firstDecision: llmMinutes.decisions[0],
+        firstNextAction: llmMinutes.nextActions[0],
+      });
 
       // Minutesオブジェクトに変換
       const minutes: Minutes = {
@@ -364,6 +384,14 @@ ${transcriptText}
           segments: 1,
         })),
       };
+      
+      // デバッグ: 変換後のMinutesオブジェクトをログ出力
+      logger.info('変換後のMinutesオブジェクト', {
+        decisionsCount: minutes.decisions.length,
+        nextActionsCount: minutes.nextActions.length,
+        firstDecisionTimestamp: minutes.decisions[0]?.timestamp,
+        firstNextActionTimestamp: minutes.nextActions[0]?.timestamp,
+      });
 
       return minutes;
     } catch (error) {
