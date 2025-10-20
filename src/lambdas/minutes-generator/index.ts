@@ -103,9 +103,12 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
       Component: 'MinutesGenerator',
     });
 
-    // 3. 議事録をMarkdown形式でS3に保存
+    // 3. 整形されたTranscriptを生成
+    const formattedTranscript = transcriptParser.formatTranscript(parsedTranscript);
+
+    // 4. 議事録をMarkdown形式でS3に保存（整形されたTranscriptを含む）
     const minutesS3Key = `${userId}/${jobId}/minutes.md`;
-    const markdownContent = formatMinutesAsMarkdown(minutes);
+    const markdownContent = formatMinutesAsMarkdown(minutes, formattedTranscript);
 
     await s3Client.send(
       new PutObjectCommand({
@@ -118,9 +121,8 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
 
     logger.info('議事録をS3に保存', { minutesS3Key });
 
-    // 4. 整形されたTranscriptもテキストファイルとして保存
+    // 5. 整形されたTranscriptもテキストファイルとして保存
     const transcriptTextS3Key = `${userId}/${jobId}/transcript.txt`;
-    const formattedTranscript = transcriptParser.formatTranscript(parsedTranscript);
 
     await s3Client.send(
       new PutObjectCommand({
@@ -197,7 +199,7 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
 /**
  * 議事録をMarkdown形式にフォーマットする
  */
-function formatMinutesAsMarkdown(minutes: Minutes): string {
+function formatMinutesAsMarkdown(minutes: Minutes, formattedTranscript: string): string {
   let markdown = `# 議事録\n\n`;
   markdown += `**生成日時**: ${new Date(minutes.generatedAt).toLocaleString('ja-JP')}\n\n`;
 
@@ -226,24 +228,17 @@ function formatMinutesAsMarkdown(minutes: Minutes): string {
     markdown += `ネクストアクションはありません。\n\n`;
   } else {
     minutes.nextActions.forEach((action, index) => {
-      markdown += `${index + 1}. ${action.description}`;
-      if (action.assignee) {
-        markdown += ` - 担当: ${action.assignee}`;
-      }
-      if (action.dueDate) {
-        markdown += ` - 期限: ${action.dueDate}`;
-      }
-      if (action.timestamp) {
-        markdown += ` (${action.timestamp})`;
-      }
+      markdown += `${index + 1}. ${action.description}\n`;
+      markdown += `   - **担当**: ${action.assignee || '不明'}\n`;
+      markdown += `   - **期限**: ${action.dueDate || '不明'}\n`;
+      markdown += `   - **タイムスタンプ**: ${action.timestamp || '不明'}\n`;
       markdown += `\n`;
     });
-    markdown += `\n`;
   }
 
-  // 文字起こし全文
+  // 文字起こし全文（話者とタイムスタンプ付きで段落分け）
   markdown += `## 文字起こし全文\n\n`;
-  markdown += `${minutes.transcript}\n`;
+  markdown += `${formattedTranscript}\n`;
 
   return markdown;
 }
