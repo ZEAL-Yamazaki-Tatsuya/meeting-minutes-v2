@@ -257,8 +257,14 @@ export class TranscriptParser {
       const startTimeFormatted = this.formatTime(segment.startTime);
       const endTimeFormatted = this.formatTime(segment.endTime);
 
-      formatted += `[${startTimeFormatted} - ${endTimeFormatted}] ${segment.speakerId}:\n`;
-      formatted += `${segment.text}\n\n`;
+      // 「???」を除去してクリーンなテキストにする
+      const cleanText = segment.text.replace(/\?+/g, '').trim();
+      
+      // 空のテキストはスキップ
+      if (cleanText) {
+        formatted += `[${startTimeFormatted} - ${endTimeFormatted}] ${segment.speakerId}:\n`;
+        formatted += `${cleanText}\n\n`;
+      }
     }
 
     return formatted;

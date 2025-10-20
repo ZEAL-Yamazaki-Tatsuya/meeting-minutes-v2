@@ -91,10 +91,16 @@ export class BedrockClient {
     if (parsedTranscript.segments.length > 0) {
       for (const segment of parsedTranscript.segments) {
         const startTime = this.formatTime(segment.startTime);
-        transcriptText += `[${startTime}] ${segment.speakerId}: ${segment.text}\n\n`;
+        // 「???」を除去してクリーンなテキストにする
+        const cleanText = segment.text.replace(/\?+/g, '').trim();
+        // 空のテキストはスキップ
+        if (cleanText) {
+          transcriptText += `[${startTime}] ${segment.speakerId}: ${cleanText}\n\n`;
+        }
       }
     } else {
-      transcriptText = parsedTranscript.fullText;
+      // fullTextからも「???」を除去
+      transcriptText = parsedTranscript.fullText.replace(/\?+/g, '').trim();
     }
 
     // 会議コンテキスト情報を構築
@@ -178,19 +184,32 @@ ${transcriptText}
   "decisions": [
     {
       "description": "決定事項の具体的な説明",
-      "timestamp": "[HH:MM:SS]"
+      "timestamp": "00:15:30"
+    },
+    {
+      "description": "別の決定事項",
+      "timestamp": "00:18:45"
     }
   ],
   "nextActions": [
     {
       "description": "アクションの具体的な説明",
-      "assignee": "担当者名",
-      "dueDate": "YYYY-MM-DD",
-      "timestamp": "[HH:MM:SS]"
+      "assignee": "田中",
+      "dueDate": "2025-10-30",
+      "timestamp": "00:20:15"
+    },
+    {
+      "description": "別のアクション",
+      "timestamp": "00:25:00"
     }
   ]
 }
 \`\`\`
+
+**重要な注意事項:**
+- timestampは文字起こしテキストの[HH:MM:SS]部分から抽出してください
+- 例：「[00:15:30] spk_0: 〜に決定します」→ timestamp: "00:15:30"
+- timestampがない項目は絶対に含めないでください
 
 # 絶対に守るべきルール
 
