@@ -31,6 +31,12 @@ interface CheckTranscribeStatusInput {
   jobId: string;
   userId: string;
   transcribeJobName: string;
+  meetingContext?: {
+    meetingType?: string;
+    attendees?: string[];
+    focusAreas?: string[];
+    additionalInstructions?: string;
+  };
 }
 
 /**
@@ -44,6 +50,12 @@ interface CheckTranscribeStatusOutput {
   isComplete: boolean;
   transcriptS3Key?: string;
   errorMessage?: string;
+  meetingContext?: {
+    meetingType?: string;
+    attendees?: string[];
+    focusAreas?: string[];
+    additionalInstructions?: string;
+  };
 }
 
 /**
@@ -140,6 +152,7 @@ async function checkTranscriptionStatus(
           status: 'COMPLETED',
           isComplete: true,
           transcriptS3Key,
+          meetingContext: input.meetingContext, // 会議コンテキストを次のステップに渡す
         };
       }
 
@@ -166,6 +179,7 @@ async function checkTranscriptionStatus(
           status: 'FAILED',
           isComplete: true,
           errorMessage: failureReason,
+          meetingContext: input.meetingContext, // 会議コンテキストを次のステップに渡す
         };
       }
 
@@ -185,6 +199,7 @@ async function checkTranscriptionStatus(
           transcribeJobName: input.transcribeJobName,
           status: status || 'IN_PROGRESS',
           isComplete: false,
+          meetingContext: input.meetingContext, // 会議コンテキストを次のステップに渡す
         };
       }
     }

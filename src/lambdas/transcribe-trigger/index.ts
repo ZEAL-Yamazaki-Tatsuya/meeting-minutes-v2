@@ -36,6 +36,12 @@ interface TranscribeTriggerInput {
   videoS3Key: string;
   languageCode?: string;
   maxSpeakerLabels?: number;
+  meetingContext?: {
+    meetingType?: string;
+    attendees?: string[];
+    focusAreas?: string[];
+    additionalInstructions?: string;
+  };
 }
 
 /**
@@ -46,6 +52,12 @@ interface TranscribeTriggerOutput {
   userId: string;
   transcribeJobName: string;
   status: string;
+  meetingContext?: {
+    meetingType?: string;
+    attendees?: string[];
+    focusAreas?: string[];
+    additionalInstructions?: string;
+  };
 }
 
 /**
@@ -125,6 +137,7 @@ async function startTranscriptionJob(
       userId: input.userId,
       transcribeJobName,
       status: response.TranscriptionJob?.TranscriptionJobStatus || 'IN_PROGRESS',
+      meetingContext: input.meetingContext, // 会議コンテキストを次のステップに渡す
     };
   } catch (error) {
     logger.error('Transcribeジョブ開始失敗', error as Error, {
