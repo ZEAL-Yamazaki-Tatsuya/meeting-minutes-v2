@@ -66,29 +66,56 @@ function parseMarkdownMinutes(markdown: string): {
         if (currentSection === 'summary' && line && !line.startsWith('#')) {
             currentText += line + '\n';
         } else if (currentSection === 'decisions' && line) {
-            // 決定事項の行をパース（例: 1. 決定内容 ([00:03:53])）
-            const match = line.match(/^\d+\.\s+(.+?)(?:\s+\((\[[\d:]+\])\))?$/);
+            // 決定事項の行をパース（例: 1. 決定内容 (00:03:53) または 1. 決定内容）
+            const match = line.match(/^\d+\.\s+(.+?)(?:\s+\(([^\)]+)\))?$/);
             if (match) {
+                const timestamp = match[2] ? match[2].replace(/[\[\]]/g, '') : undefined;
                 decisions.push({
                     id: `decision-${decisions.length + 1}`,
                     description: match[1].trim(),
-                    timestamp: match[2],
+                    timestamp,
                 });
             } else if (line !== '決定事項はありません。') {
                 currentText += line + '\n';
             }
         } else if (currentSection === 'nextActions' && line) {
-            // ネクストアクションの行をパース
-            // 例: 1. アクション内容 - 担当: 名前 - 期限: 2024-01-09 ([00:03:02])
-            const match = line.match(/^\d+\.\s+(.+?)(?:\s+-\s+担当:\s+([^\s-]+))?(?:\s+-\s+期限:\s+([\d-]+))?(?:\s+\((\[[\d:]+\])\))?$/);
-            if (match) {
+            // ネクストアクションの行をパース（複数行形式）
+            // 例: 
+            // 1. アクション内容
+            //    - **担当**: 名前
+            //    - **期限**: 2024-01-09
+            //    - **タイムスタンプ**: 00:31:47
+            
+            const actionMatch = line.match(/^\d+\.\s+(.+)$/);
+            if (actionMatch) {
+                // 新しいアクションを開始
                 nextActions.push({
                     id: `action-${nextActions.length + 1}`,
-                    description: match[1].trim(),
-                    assignee: match[2],
-                    dueDate: match[3],
-                    timestamp: match[4],
+                    description: actionMatch[1].trim(),
                 });
+            } else if (line.includes('**担当**:') || line.includes('**担当者**:')) {
+                // 担当者を設定
+                const assigneeMatch = line.match(/\*\*担当(?:者)?\*\*:\s*(.+)$/);
+                if (assigneeMatch && nextActions.length > 0) {
+                    const assignee = assigneeMatch[1].trim();
+                    nextActions[nextActions.length - 1].assignee = assignee !== '不明' ? assignee : undefined;
+                }
+            } else if (line.includes('**期限**:')) {
+                // 期限を設定
+                const dueDateMatch = line.match(/\*\*期限\*\*:\s*(.+)$/);
+                if (dueDateMatch && nextActions.length > 0) {
+                    const dueDate = dueDateMatch[1].trim();
+                    nextActions[nextActions.length - 1].dueDate = dueDate !== '不明' ? dueDate : undefined;
+                }
+            } else if (line.includes('**タイムスタンプ**:')) {
+                // タイムスタンプを設定（角括弧を除去）
+                const timestampMatch = line.match(/\*\*タイムスタンプ\*\*:\s*(.+)$/);
+                if (timestampMatch && nextActions.length > 0) {
+                    let timestamp = timestampMatch[1].trim();
+                    // 角括弧を除去
+                    timestamp = timestamp.replace(/[\[\]]/g, '');
+                    nextActions[nextActions.length - 1].timestamp = timestamp !== '不明' ? timestamp : undefined;
+                }
             } else if (line !== 'ネクストアクションはありません。') {
                 currentText += line + '\n';
             }

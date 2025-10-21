@@ -61,7 +61,7 @@ export class BedrockClient {
 
       // プロンプトを構築（会議コンテキストを含む）
       const prompt = this.buildPrompt(parsedTranscript, meetingContext);
-      
+
       // デバッグ: プロンプトの最初の500文字をログ出力
       logger.info('LLMに送信するプロンプト（抜粋）', {
         promptPreview: prompt.substring(0, 500),
@@ -70,7 +70,7 @@ export class BedrockClient {
 
       // LLMを呼び出し（リトライロジック付き）
       const llmResponse = await this.invokeModelWithRetry(prompt);
-      
+
       // デバッグ: LLMレスポンスをログ出力
       logger.info('LLMからのレスポンス', {
         response: llmResponse.substring(0, 1000), // 最初の1000文字
@@ -180,11 +180,11 @@ ${transcriptText}
    - フォローアップ：「〜を追いかける」「〜を確認する」
    - 小さなタスクも含む：メール送信、資料共有、日程調整など
    
-   各アクションには以下を**必ず**含めてください：
-   - description: アクションの具体的な説明（5W1Hを意識：誰が、何を、いつ、どこで、なぜ、どのように）
-   - assignee: 担当者（明示されている場合、または文脈から推測できる場合。不明な場合は省略）
-   - dueDate: 期限（明示されている場合、YYYY-MM-DD形式。不明な場合は省略）
-   - timestamp: 該当する発言のタイムスタンプ（**必須**。文字起こしテキストの[HH:MM:SS]形式のタイムスタンプを必ず記録してください）
+   各アクションには以下のフィールドを含めてください：
+   - **description** (必須): アクションの具体的な説明（5W1Hを意識：誰が、何を、いつ、どこで、なぜ、どのように）
+   - **timestamp** (必須): 該当する発言のタイムスタンプ（文字起こしテキストの[HH:MM:SS]形式を必ず記録）
+   - **assignee** (任意): 担当者名（明示されている場合のみ。例：「田中さんが〜する」→ "田中"）
+   - **dueDate** (任意): 期限（明示されている場合のみ、YYYY-MM-DD形式。例：「来週金曜日まで」→ "2025-10-31"）
 
 # 出力形式
 
@@ -206,12 +206,12 @@ ${transcriptText}
   "nextActions": [
     {
       "description": "アクションの具体的な説明",
+      "timestamp": "00:20:15",
       "assignee": "田中",
-      "dueDate": "2025-10-30",
-      "timestamp": "00:20:15"
+      "dueDate": "2025-10-30"
     },
     {
-      "description": "別のアクション",
+      "description": "別のアクション（担当者・期限が不明な場合）",
       "timestamp": "00:25:00"
     }
   ]
@@ -236,9 +236,16 @@ ${transcriptText}
 3. **具体性**: 各項目は具体的かつ詳細に記述してください。曖昧な表現は避けてください。
 4. **正確性**: 文字起こしテキストに忠実に、事実のみを記録してください。
 5. **形式**: JSON形式のみを出力し、他の説明文は含めないでください。
+6. **フィールドの順序**: nextActionsの各項目は、必ず以下の順序でフィールドを出力してください：
+   - description (必須)
+   - timestamp (必須)
+   - assignee (任意 - 明示されている場合のみ)
+   - dueDate (任意 - 明示されている場合のみ)
 
-決定事項やアクションアイテムが本当に存在しない場合のみ、空の配列を返してください。
-担当者や期限が明示されていない場合は、そのフィールドを省略してください。`;
+**重要**: 担当者や期限が会議中で明示されていない場合でも、timestampフィールドは必ず含めてください。
+例：担当者不明の場合 → {"description": "...", "timestamp": "00:20:15"} (assigneeフィールドは省略)
+
+決定事項やアクションアイテムが本当に存在しない場合のみ、空の配列を返してください。`;
 
     return prompt;
   }
@@ -352,7 +359,7 @@ ${transcriptText}
       }
 
       const llmMinutes: LLMMinutesResponse = JSON.parse(jsonText);
-      
+
       // デバッグ: パースされたLLMレスポンスをログ出力
       logger.info('パースされたLLMレスポンス', {
         decisionsCount: llmMinutes.decisions.length,
@@ -384,7 +391,7 @@ ${transcriptText}
           segments: 1,
         })),
       };
-      
+
       // デバッグ: 変換後のMinutesオブジェクトをログ出力
       logger.info('変換後のMinutesオブジェクト', {
         decisionsCount: minutes.decisions.length,
