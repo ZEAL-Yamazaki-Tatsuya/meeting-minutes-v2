@@ -5,7 +5,7 @@ import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 
-const JOBS_TABLE = process.env.JOBS_TABLE!;
+const JOBS_TABLE = process.env.JOBS_TABLE_NAME!;
 
 /**
  * 議事録更新Lambda関数
