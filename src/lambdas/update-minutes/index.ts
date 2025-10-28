@@ -8,6 +8,24 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const JOBS_TABLE = process.env.JOBS_TABLE_NAME!;
 
 /**
+ * Cognito認証からuserIdを取得
+ */
+function getUserIdFromEvent(event: APIGatewayProxyEvent): string | null {
+  // Cognito認証の場合
+  const claims = event.requestContext?.authorizer?.claims;
+  if (claims && claims.sub) {
+    return claims.sub;
+  }
+
+  // クエリパラメータから取得（開発用）
+  if (event.queryStringParameters?.userId) {
+    return event.queryStringParameters.userId;
+  }
+
+  return null;
+}
+
+/**
  * 議事録更新Lambda関数
  * PUT /api/jobs/{jobId}/minutes
  */
@@ -37,6 +55,19 @@ export const handler = async (
       };
     }
 
+    // userIdを取得
+    const userId = getUserIdFromEvent(event);
+    if (!userId) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: '認証が必要です',
+        }),
+      };
+    }
+
     // リクエストボディをパース
     if (!event.body) {
       return {
@@ -56,7 +87,10 @@ export const handler = async (
     const getResult = await docClient.send(
       new GetCommand({
         TableName: JOBS_TABLE,
-        Key: { jobId },
+        Key: { 
+          jobId,
+          userId,
+        },
       })
     );
 
@@ -115,7 +149,10 @@ export const handler = async (
     const updateResult = await docClient.send(
       new UpdateCommand({
         TableName: JOBS_TABLE,
-        Key: { jobId },
+        Key: { 
+          jobId,
+          userId,
+        },
         UpdateExpression: `SET ${updateExpressions.join(', ')}`,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
