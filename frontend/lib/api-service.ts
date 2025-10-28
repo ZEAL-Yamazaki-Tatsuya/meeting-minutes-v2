@@ -140,11 +140,11 @@ class APIService {
    * @returns 更新された議事録
    */
   async updateMinutes(jobId: string, minutes: Partial<Minutes>): Promise<Minutes> {
-    const response = await apiClient.put<Minutes>(
+    const response = await apiClient.put<{ success: boolean; data: Minutes }>(
       `/api/jobs/${jobId}/minutes`,
       minutes
     );
-    return response.data;
+    return response.data.data;
   }
 
   /**

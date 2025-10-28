@@ -35,6 +35,7 @@ export class ComputeStack extends cdk.Stack {
   public readonly listJobsHandler: lambda.Function;
   public readonly getMinutesHandler: lambda.Function;
   public readonly downloadMinutesHandler: lambda.Function;
+  public readonly updateMinutesHandler: lambda.Function;
   public readonly startProcessingHandler: lambda.Function;
   public readonly minutesGeneratorHandler: lambda.Function;
   public readonly stateMachine: sfn.StateMachine;
@@ -290,6 +291,27 @@ export class ComputeStack extends cdk.Stack {
       },
     });
 
+    // Update Minutes Lambda
+    this.updateMinutesHandler = new nodejs.NodejsFunction(this, 'UpdateMinutesHandler', {
+      functionName: `${appName}-update-minutes-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: path.join(__dirname, '../src/lambdas/update-minutes/index.ts'),
+      handler: 'handler',
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: '議事録を更新する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
+    });
+
     // Minutes Generator Lambda
     this.minutesGeneratorHandler = new nodejs.NodejsFunction(this, 'MinutesGeneratorHandler', {
       functionName: `${appName}-minutes-generator-${environment}`,
@@ -426,6 +448,18 @@ export class ComputeStack extends cdk.Stack {
     minutesResource.addMethod(
       'GET',
       new apigateway.LambdaIntegration(this.getMinutesHandler, {
+        proxy: true,
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
+    );
+
+    // PUT /api/jobs/{jobId}/minutes エンドポイント - 議事録更新
+    minutesResource.addMethod(
+      'PUT',
+      new apigateway.LambdaIntegration(this.updateMinutesHandler, {
         proxy: true,
       }),
       {
@@ -587,6 +621,12 @@ export class ComputeStack extends cdk.Stack {
       value: this.downloadMinutesHandler.functionArn,
       description: 'Download Minutes Lambda ARN',
       exportName: `${appName}-download-minutes-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'UpdateMinutesHandlerArn', {
+      value: this.updateMinutesHandler.functionArn,
+      description: 'Update Minutes Lambda ARN',
+      exportName: `${appName}-update-minutes-arn-${environment}`,
     });
 
     new cdk.CfnOutput(this, 'StateMachineArn', {
