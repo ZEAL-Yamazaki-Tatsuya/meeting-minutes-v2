@@ -44,6 +44,29 @@ export class BedrockClient {
   }
 
   /**
+   * チャット用にBedrockを呼び出す（公開メソッド）
+   */
+  async invokeChatModel(prompt: string): Promise<string> {
+    try {
+      logger.info('チャット用Bedrock呼び出しを開始', {
+        promptLength: prompt.length,
+      });
+
+      // リトライロジック付きで呼び出し
+      const response = await this.invokeModelWithRetry(prompt);
+
+      logger.info('チャット用Bedrock呼び出しに成功', {
+        responseLength: response.length,
+      });
+
+      return response;
+    } catch (error) {
+      logger.error('チャット用Bedrock呼び出しに失敗', error as Error);
+      throw error;
+    }
+  }
+
+  /**
    * 議事録を生成する
    */
   async generateMinutes(

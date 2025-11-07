@@ -36,6 +36,7 @@ export class ComputeStack extends cdk.Stack {
   public readonly getMinutesHandler: lambda.Function;
   public readonly downloadMinutesHandler: lambda.Function;
   public readonly updateMinutesHandler: lambda.Function;
+  public readonly chatHandler: lambda.Function;
   public readonly startProcessingHandler: lambda.Function;
   public readonly minutesGeneratorHandler: lambda.Function;
   public readonly stateMachine: sfn.StateMachine;
@@ -312,6 +313,27 @@ export class ComputeStack extends cdk.Stack {
       },
     });
 
+    // Chat Handler Lambda
+    this.chatHandler = new nodejs.NodejsFunction(this, 'ChatHandler', {
+      functionName: `${appName}-chat-handler-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: path.join(__dirname, '../src/lambdas/chat-handler/index.ts'),
+      handler: 'handler',
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(60), // チャット応答のため60秒に設定
+      memorySize: 512,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: '議事録に関する質問に対してBedrockを使用して回答を生成する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
+    });
+
     // Minutes Generator Lambda
     this.minutesGeneratorHandler = new nodejs.NodejsFunction(this, 'MinutesGeneratorHandler', {
       functionName: `${appName}-minutes-generator-${environment}`,
@@ -460,6 +482,27 @@ export class ComputeStack extends cdk.Stack {
     minutesResource.addMethod(
       'PUT',
       new apigateway.LambdaIntegration(this.updateMinutesHandler, {
+        proxy: true,
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
+    );
+
+    // POST /api/jobs/{jobId}/chat エンドポイント - チャット
+    const chatResource = jobIdResource.addResource('chat');
+    
+    // CORSプリフライトを追加
+    chatResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+    
+    chatResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(this.chatHandler, {
         proxy: true,
       }),
       {
@@ -627,6 +670,12 @@ export class ComputeStack extends cdk.Stack {
       value: this.updateMinutesHandler.functionArn,
       description: 'Update Minutes Lambda ARN',
       exportName: `${appName}-update-minutes-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'ChatHandlerArn', {
+      value: this.chatHandler.functionArn,
+      description: 'Chat Handler Lambda ARN',
+      exportName: `${appName}-chat-handler-arn-${environment}`,
     });
 
     new cdk.CfnOutput(this, 'StateMachineArn', {

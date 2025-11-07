@@ -10,6 +10,9 @@ import { Minutes, Decision, NextAction, Topic } from '@/types';
 import ProtectedRoute from '@/components/protected-route';
 import TopicList from '@/components/topic-list';
 import TopicEditor from '@/components/topic-editor';
+import ChatButton from '@/components/chat-button';
+import ChatModal from '@/components/chat-modal';
+import ChatContainer from '@/components/chat-container';
 
 /**
  * ローディングスピナーコンポーネント
@@ -70,6 +73,9 @@ function MinutesPageContent() {
   // ダウンロード関連の状態
   const [isDownloading, setIsDownloading] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  
+  // チャット関連の状態
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // 議事録を取得
   useEffect(() => {
@@ -763,6 +769,32 @@ function MinutesPageContent() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* チャットボタン */}
+          {!loading && minutes && !isEditing && (
+            <ChatButton
+              onClick={() => setIsChatOpen(true)}
+              disabled={false}
+            />
+          )}
+
+          {/* チャットモーダル */}
+          {minutes && (
+            <ChatModal
+              isOpen={isChatOpen}
+              onClose={() => setIsChatOpen(false)}
+            >
+              <ChatContainer
+                jobId={jobId}
+                minutesContext={{
+                  summary: minutes.summary,
+                  decisions: minutes.decisions,
+                  nextActions: minutes.nextActions,
+                  transcript: minutes.transcript,
+                }}
+              />
+            </ChatModal>
           )}
         </div>
       </div>

@@ -158,6 +158,36 @@ class APIService {
     );
     return response.data.data;
   }
+
+  /**
+   * チャットメッセージを送信
+   * @param jobId ジョブID
+   * @param message ユーザーのメッセージ
+   * @param context 議事録コンテキスト
+   * @param history 会話履歴
+   * @returns AIの回答
+   */
+  async sendChatMessage(
+    jobId: string,
+    message: string,
+    context: {
+      summary: string;
+      decisions: { id: string; description: string; timestamp?: string }[];
+      nextActions: { id: string; description: string; assignee?: string; dueDate?: string; timestamp?: string }[];
+      transcript: string;
+    },
+    history: { role: 'user' | 'assistant'; content: string }[]
+  ): Promise<{ message: string; timestamp: string }> {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: { message: string; timestamp: string };
+    }>(`/api/jobs/${jobId}/chat`, {
+      message,
+      context,
+      history,
+    });
+    return response.data.data;
+  }
 }
 
 // シングルトンインスタンスをエクスポート
