@@ -1,13 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { TranscriptParser } from '../../utils/transcript-parser';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const s3Client = new S3Client({});
-const transcriptParser = new TranscriptParser(s3Client);
 
 const JOBS_TABLE = process.env.JOBS_TABLE_NAME!;
 const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET_NAME!;
@@ -326,50 +324,75 @@ export const handler = async (
 
     console.log('Update result:', JSON.stringify(updateResult, null, 2));
 
-    // 文字起こし全文を取得（S3から）
+    // 既存のMarkdownファイルから文字起こし全文を取得
     let transcript = '';
     let formattedTranscript = '';
     
-    if (getResult.Item.transcriptS3Key) {
-      try {
-        // TranscriptParserを使用してS3から取得・整形
-        const transcribeOutput = await transcriptParser.fetchTranscriptFromS3(
-          OUTPUT_BUCKET,
-          getResult.Item.transcriptS3Key
-        );
-        
-        const parsedTranscript = transcriptParser.parseTranscript(transcribeOutput);
-        transcript = parsedTranscript.fullText;
-        formattedTranscript = transcriptParser.formatTranscript(parsedTranscript);
-      } catch (transcriptError) {
-        console.error('Failed to get transcript from S3:', transcriptError);
-        // 文字起こし取得失敗は警告のみ
-      }
-    }
-
-    // S3のMarkdownファイルも更新（minutesS3Keyが存在する場合）
     if (getResult.Item.minutesS3Key) {
       try {
-        const markdownContent = generateMarkdown({
-          ...updateResult.Attributes,
-          transcript,
-        });
-        await s3Client.send(
-          new PutObjectCommand({
+        console.log('Fetching existing markdown from S3:', getResult.Item.minutesS3Key);
+        // S3から既存のMarkdownファイルを取得
+        const getObjectResponse = await s3Client.send(
+          new GetObjectCommand({
             Bucket: OUTPUT_BUCKET,
             Key: getResult.Item.minutesS3Key,
-            Body: markdownContent,
-            ContentType: 'text/markdown',
           })
         );
-        console.log('Updated S3 markdown file:', getResult.Item.minutesS3Key);
+        
+        if (getObjectResponse.Body) {
+          const existingMarkdown = await getObjectResponse.Body.transformToString('utf-8');
+          console.log('Existing markdown length:', existingMarkdown.length);
+          
+          // Markdownから文字起こし全文を抽出
+          const transcriptMatch = existingMarkdown.match(/## 文字起こし全文\n\n([\s\S]+?)(?:\n\n##|$)/);
+          if (transcriptMatch) {
+            transcript = transcriptMatch[1].trim();
+            formattedTranscript = transcript; // 既に整形済み
+            console.log('Extracted transcript length:', transcript.length);
+          } else {
+            console.log('No transcript section found in markdown, fetching from transcript.txt');
+            // Markdownに文字起こし全文がない場合は、transcript.txtから取得
+            const transcriptKey = getResult.Item.minutesS3Key.replace('/minutes.md', '/transcript.txt');
+            try {
+              const transcriptResponse = await s3Client.send(
+                new GetObjectCommand({
+                  Bucket: OUTPUT_BUCKET,
+                  Key: transcriptKey,
+                })
+              );
+              if (transcriptResponse.Body) {
+                transcript = await transcriptResponse.Body.transformToString('utf-8');
+                formattedTranscript = transcript;
+                console.log('Fetched transcript from transcript.txt, length:', transcript.length);
+              }
+            } catch (transcriptError) {
+              console.error('Failed to fetch transcript.txt:', transcriptError);
+            }
+          }
+          
+          // Markdownファイルを更新（文字起こし全文を含める）
+          const markdownContent = generateMarkdown({
+            ...updateResult.Attributes,
+            transcript,
+          });
+          
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: OUTPUT_BUCKET,
+              Key: getResult.Item.minutesS3Key,
+              Body: markdownContent,
+              ContentType: 'text/markdown',
+            })
+          );
+          console.log('Updated S3 markdown file:', getResult.Item.minutesS3Key);
+        }
       } catch (s3Error) {
         console.error('Failed to update S3 file:', s3Error);
         // S3更新失敗はエラーとしない（DynamoDBは更新済み）
       }
     }
 
-    // レスポンスデータを整形（get-minutesと同じ形式に合わせる）
+    // レスポンスデータを整形（get-minutesと同じ形式）
     const responseData = {
       jobId: updateResult.Attributes?.jobId,
       userId: updateResult.Attributes?.userId,
@@ -382,7 +405,7 @@ export const handler = async (
       meetingDate: updateResult.Attributes?.meetingDate,
       transcript,
       formattedTranscript,
-      speakers: [], // 話者情報は不要
+      speakers: [], // 話者情報は不要（get-minutesと互換性のため）
     };
 
     return {

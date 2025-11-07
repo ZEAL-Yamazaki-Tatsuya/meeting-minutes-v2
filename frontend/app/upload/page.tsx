@@ -390,8 +390,11 @@ function UploadPageContent() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       重点的に整理したい項目
                     </label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      選択した項目を特に詳細に抽出します
+                    </p>
                     <div className="space-y-2">
-                      {['決定事項', 'ネクストアクション', '課題・リスク', '議論のポイント'].map((area) => (
+                      {['各トピックの概要', '決定事項', 'ネクストアクション', '課題・リスク'].map((area) => (
                         <label key={area} className="flex items-center">
                           <input
                             type="checkbox"
@@ -411,15 +414,15 @@ function UploadPageContent() {
                     </div>
                   </div>
 
-                  {/* 追加の指示 */}
+                  {/* 追加補足事項 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      追加の指示
+                      追加補足事項
                     </label>
                     <textarea
                       value={additionalInstructions}
                       onChange={(e) => setAdditionalInstructions(e.target.value)}
-                      placeholder="例：技術的な詳細を重視してください"
+                      placeholder="例：技術的な詳細を重視してください、特定のプロジェクトに関する議論です"
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
