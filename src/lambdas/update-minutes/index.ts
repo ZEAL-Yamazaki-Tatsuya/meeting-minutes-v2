@@ -1,11 +1,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const s3Client = new S3Client({});
 
 const JOBS_TABLE = process.env.JOBS_TABLE_NAME!;
+const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET_NAME!;
 
 /**
  * Cognito認証からuserIdを取得
@@ -23,6 +26,69 @@ function getUserIdFromEvent(event: APIGatewayProxyEvent): string | null {
   }
 
   return null;
+}
+
+/**
+ * 議事録データからMarkdownを生成
+ */
+function generateMarkdown(data: any): string {
+  const lines: string[] = [];
+
+  lines.push('# 議事録');
+  lines.push('');
+  lines.push(`生成日時: ${new Date(data.updatedAt).toLocaleString('ja-JP')}`);
+  lines.push('');
+
+  // 概要
+  lines.push('## 概要');
+  lines.push('');
+  lines.push(data.summary || '');
+  lines.push('');
+
+  // 決定事項
+  lines.push('## 決定事項');
+  lines.push('');
+  if (data.decisions && data.decisions.length > 0) {
+    data.decisions.forEach((decision: any, index: number) => {
+      const timestamp = decision.timestamp ? ` (${decision.timestamp})` : '';
+      lines.push(`${index + 1}. ${decision.description}${timestamp}`);
+    });
+  } else {
+    lines.push('決定事項はありません。');
+  }
+  lines.push('');
+
+  // ネクストアクション
+  lines.push('## ネクストアクション');
+  lines.push('');
+  if (data.nextActions && data.nextActions.length > 0) {
+    data.nextActions.forEach((action: any, index: number) => {
+      lines.push(`${index + 1}. ${action.description}`);
+      if (action.assignee) {
+        lines.push(`   - **担当**: ${action.assignee}`);
+      }
+      if (action.dueDate) {
+        lines.push(`   - **期限**: ${action.dueDate}`);
+      }
+      if (action.timestamp) {
+        lines.push(`   - **タイムスタンプ**: ${action.timestamp}`);
+      }
+      lines.push('');
+    });
+  } else {
+    lines.push('ネクストアクションはありません。');
+    lines.push('');
+  }
+
+  // 文字起こし全文（存在する場合）
+  if (data.transcript) {
+    lines.push('## 文字起こし全文');
+    lines.push('');
+    lines.push(data.transcript);
+    lines.push('');
+  }
+
+  return lines.join('\n');
 }
 
 /**
@@ -162,12 +228,45 @@ export const handler = async (
 
     console.log('Update result:', JSON.stringify(updateResult, null, 2));
 
+    // S3のMarkdownファイルも更新（minutesS3Keyが存在する場合）
+    if (getResult.Item.minutesS3Key) {
+      try {
+        const markdownContent = generateMarkdown(updateResult.Attributes);
+        await s3Client.send(
+          new PutObjectCommand({
+            Bucket: OUTPUT_BUCKET,
+            Key: getResult.Item.minutesS3Key,
+            Body: markdownContent,
+            ContentType: 'text/markdown',
+          })
+        );
+        console.log('Updated S3 markdown file:', getResult.Item.minutesS3Key);
+      } catch (s3Error) {
+        console.error('Failed to update S3 file:', s3Error);
+        // S3更新失敗はエラーとしない（DynamoDBは更新済み）
+      }
+    }
+
+    // レスポンスデータを整形（get-minutesと同じ形式に合わせる）
+    const responseData = {
+      jobId: updateResult.Attributes?.jobId,
+      userId: updateResult.Attributes?.userId,
+      generatedAt: updateResult.Attributes?.updatedAt, // 更新日時を生成日時として返す
+      summary: updateResult.Attributes?.summary,
+      decisions: updateResult.Attributes?.decisions || [],
+      nextActions: updateResult.Attributes?.nextActions || [],
+      participants: updateResult.Attributes?.participants,
+      meetingDate: updateResult.Attributes?.meetingDate,
+      transcript: updateResult.Attributes?.transcript || '',
+      speakers: updateResult.Attributes?.speakers || [],
+    };
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        data: updateResult.Attributes,
+        data: responseData,
       }),
     };
   } catch (error) {
