@@ -2,10 +2,12 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { TranscriptParser } from '../../utils/transcript-parser';
 
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const s3Client = new S3Client({});
+const transcriptParser = new TranscriptParser(s3Client);
 
 const JOBS_TABLE = process.env.JOBS_TABLE_NAME!;
 const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET_NAME!;
@@ -42,8 +44,24 @@ function generateMarkdown(data: any): string {
   // 概要
   lines.push('## 概要');
   lines.push('');
+  
+  // 全体概要
+  lines.push('### 全体概要');
+  lines.push('');
   lines.push(data.summary || '');
   lines.push('');
+
+  // トピック別詳細
+  if (data.topics && data.topics.length > 0) {
+    lines.push('### トピック別詳細');
+    lines.push('');
+    data.topics.forEach((topic: any, index: number) => {
+      lines.push(`#### ${index + 1}. ${topic.title}`);
+      lines.push('');
+      lines.push(topic.description);
+      lines.push('');
+    });
+  }
 
   // 決定事項
   lines.push('## 決定事項');
@@ -149,6 +167,85 @@ export const handler = async (
     const updates = JSON.parse(event.body);
     console.log('Updates:', JSON.stringify(updates, null, 2));
 
+    // topicsフィールドのバリデーション
+    if (updates.topics !== undefined) {
+      // topicsが配列であることを確認
+      if (!Array.isArray(updates.topics)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'topicsは配列である必要があります',
+          }),
+        };
+      }
+
+      // 各トピックの構造を検証
+      for (const topic of updates.topics) {
+        if (!topic.id || typeof topic.id !== 'string') {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'トピックにはid（文字列）が必要です',
+            }),
+          };
+        }
+        if (!topic.title || typeof topic.title !== 'string') {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'トピックにはtitle（文字列）が必要です',
+            }),
+          };
+        }
+        if (topic.title.length > 200) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'トピックのタイトルは200文字以内である必要があります',
+            }),
+          };
+        }
+        if (!topic.description || typeof topic.description !== 'string') {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'トピックにはdescription（文字列）が必要です',
+            }),
+          };
+        }
+        if (topic.description.length > 500) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'トピックの説明は500文字以内である必要があります',
+            }),
+          };
+        }
+        if (typeof topic.order !== 'number') {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'トピックにはorder（数値）が必要です',
+            }),
+          };
+        }
+      }
+    }
+
     // ジョブが存在するか確認
     const getResult = await docClient.send(
       new GetCommand({
@@ -174,6 +271,7 @@ export const handler = async (
     // 更新可能なフィールドのみを抽出
     const allowedFields = [
       'summary',
+      'topics',
       'keyPoints',
       'decisions',
       'nextActions',
@@ -228,10 +326,34 @@ export const handler = async (
 
     console.log('Update result:', JSON.stringify(updateResult, null, 2));
 
+    // 文字起こし全文を取得（S3から）
+    let transcript = '';
+    let formattedTranscript = '';
+    
+    if (getResult.Item.transcriptS3Key) {
+      try {
+        // TranscriptParserを使用してS3から取得・整形
+        const transcribeOutput = await transcriptParser.fetchTranscriptFromS3(
+          OUTPUT_BUCKET,
+          getResult.Item.transcriptS3Key
+        );
+        
+        const parsedTranscript = transcriptParser.parseTranscript(transcribeOutput);
+        transcript = parsedTranscript.fullText;
+        formattedTranscript = transcriptParser.formatTranscript(parsedTranscript);
+      } catch (transcriptError) {
+        console.error('Failed to get transcript from S3:', transcriptError);
+        // 文字起こし取得失敗は警告のみ
+      }
+    }
+
     // S3のMarkdownファイルも更新（minutesS3Keyが存在する場合）
     if (getResult.Item.minutesS3Key) {
       try {
-        const markdownContent = generateMarkdown(updateResult.Attributes);
+        const markdownContent = generateMarkdown({
+          ...updateResult.Attributes,
+          transcript,
+        });
         await s3Client.send(
           new PutObjectCommand({
             Bucket: OUTPUT_BUCKET,
@@ -253,12 +375,14 @@ export const handler = async (
       userId: updateResult.Attributes?.userId,
       generatedAt: updateResult.Attributes?.updatedAt, // 更新日時を生成日時として返す
       summary: updateResult.Attributes?.summary,
+      topics: updateResult.Attributes?.topics,
       decisions: updateResult.Attributes?.decisions || [],
       nextActions: updateResult.Attributes?.nextActions || [],
       participants: updateResult.Attributes?.participants,
       meetingDate: updateResult.Attributes?.meetingDate,
-      transcript: updateResult.Attributes?.transcript || '',
-      speakers: updateResult.Attributes?.speakers || [],
+      transcript,
+      formattedTranscript,
+      speakers: [], // 話者情報は不要
     };
 
     return {

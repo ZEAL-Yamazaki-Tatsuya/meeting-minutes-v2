@@ -206,7 +206,19 @@ function formatMinutesAsMarkdown(minutes: Minutes, formattedTranscript: string):
 
   // 概要
   markdown += `## 概要\n\n`;
+  
+  // 全体概要
+  markdown += `### 全体概要\n\n`;
   markdown += `${minutes.summary}\n\n`;
+
+  // トピック別詳細
+  if (minutes.topics && minutes.topics.length > 0) {
+    markdown += `### トピック別詳細\n\n`;
+    minutes.topics.forEach((topic, index) => {
+      markdown += `#### ${index + 1}. ${topic.title}\n\n`;
+      markdown += `${topic.description}\n\n`;
+    });
+  }
 
   // 決定事項
   markdown += `## 決定事項\n\n`;

@@ -22,6 +22,7 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION });
  */
 function parseMarkdownMinutes(markdown: string): {
     summary: string;
+    topics?: Array<{ id: string; title: string; description: string; order: number }>;
     decisions: Array<{ id: string; description: string; timestamp?: string }>;
     nextActions: Array<{ id: string; description: string; assignee?: string; dueDate?: string; timestamp?: string }>;
     transcript: string;
@@ -29,6 +30,7 @@ function parseMarkdownMinutes(markdown: string): {
 } {
     const lines = markdown.split('\n');
     let summary = '';
+    const topics: Array<{ id: string; title: string; description: string; order: number }> = [];
     const decisions: Array<{ id: string; description: string; timestamp?: string }> = [];
     const nextActions: Array<{ id: string; description: string; assignee?: string; dueDate?: string; timestamp?: string }> = [];
     let transcript = '';
@@ -36,18 +38,38 @@ function parseMarkdownMinutes(markdown: string): {
 
     let currentSection = '';
     let currentText = '';
+    let currentTopicTitle = '';
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
 
         // セクションヘッダーを検出
         if (line.startsWith('## 概要')) {
+            currentSection = 'overview';
+            currentText = '';
+            continue;
+        } else if (line.startsWith('### 全体概要')) {
             currentSection = 'summary';
+            currentText = '';
+            continue;
+        } else if (line.startsWith('### トピック別詳細')) {
+            if (currentSection === 'summary') {
+                summary = currentText.trim();
+            }
+            currentSection = 'topics';
             currentText = '';
             continue;
         } else if (line.startsWith('## 決定事項')) {
             if (currentSection === 'summary') {
                 summary = currentText.trim();
+            } else if (currentSection === 'topics' && currentTopicTitle && currentText.trim()) {
+                // 最後のトピックを保存
+                topics.push({
+                    id: `topic-${topics.length}`,
+                    title: currentTopicTitle,
+                    description: currentText.trim(),
+                    order: topics.length,
+                });
             }
             currentSection = 'decisions';
             currentText = '';
@@ -62,8 +84,30 @@ function parseMarkdownMinutes(markdown: string): {
             continue;
         }
 
+        // トピックのタイトルを検出（#### 1. タイトル形式）
+        if (currentSection === 'topics' && line.startsWith('####')) {
+            // 前のトピックを保存
+            if (currentTopicTitle && currentText.trim()) {
+                topics.push({
+                    id: `topic-${topics.length}`,
+                    title: currentTopicTitle,
+                    description: currentText.trim(),
+                    order: topics.length,
+                });
+            }
+            // 新しいトピックを開始
+            const titleMatch = line.match(/^####\s+\d+\.\s+(.+)$/);
+            if (titleMatch) {
+                currentTopicTitle = titleMatch[1].trim();
+                currentText = '';
+            }
+            continue;
+        }
+
         // 各セクションの内容を処理
         if (currentSection === 'summary' && line && !line.startsWith('#')) {
+            currentText += line + '\n';
+        } else if (currentSection === 'topics' && line && !line.startsWith('#')) {
             currentText += line + '\n';
         } else if (currentSection === 'decisions' && line) {
             // 決定事項の行をパース（例: 1. 決定内容 (00:03:53) または 1. 決定内容）
@@ -127,10 +171,19 @@ function parseMarkdownMinutes(markdown: string): {
     // 最後のセクションを処理
     if (currentSection === 'transcript') {
         transcript = currentText.trim();
+    } else if (currentSection === 'topics' && currentTopicTitle && currentText.trim()) {
+        // 最後のトピックを保存
+        topics.push({
+            id: `topic-${topics.length}`,
+            title: currentTopicTitle,
+            description: currentText.trim(),
+            order: topics.length,
+        });
     }
 
     return {
         summary,
+        topics: topics.length > 0 ? topics : undefined,
         decisions,
         nextActions,
         transcript,
@@ -229,6 +282,7 @@ async function getMinutes(
                 userId: job.userId,
                 generatedAt: job.updatedAt,
                 summary: parsedMinutes.summary,
+                topics: parsedMinutes.topics,
                 decisions: parsedMinutes.decisions,
                 nextActions: parsedMinutes.nextActions,
                 transcript: parsedMinutes.transcript,

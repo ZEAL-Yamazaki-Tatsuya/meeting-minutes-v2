@@ -154,6 +154,11 @@ export class MeetingJobRepository {
             expressionAttributeValues[':metadata'] = input.metadata;
         }
 
+        if (input.topics !== undefined) {
+            updateExpressions.push('topics = :topics');
+            expressionAttributeValues[':topics'] = input.topics;
+        }
+
         try {
             const result = await this.docClient.send(
                 new UpdateCommand({

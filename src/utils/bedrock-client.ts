@@ -151,7 +151,19 @@ ${transcriptText}
 
 1. **概要（summary）**: 会議の主要なトピックと目的を2-3文で簡潔にまとめてください。
 
-2. **決定事項（decisions）**: 
+2. **トピック別詳細（topics）**: 
+   
+   会議で議論された主要なテーマを2-6個抽出してください。各トピックには以下を含めてください：
+   - **title**: トピックの明確なタイトル（20文字以内）
+   - **description**: トピックの詳細説明（100-300文字程度）
+   
+   トピックは以下のガイドラインに従ってください：
+   - 会議で議論された順序で並べる
+   - 重複するトピックは避ける
+   - 各トピックは独立した議題として意味を持つこと
+   - 最小2個、最大6個のトピックを生成する
+
+3. **決定事項（decisions）**: 
    
    **重要：決定事項が10個あれば10個、100個あれば100個、すべて漏らさず記録してください。要約や省略は絶対にしないでください。**
    
@@ -193,6 +205,16 @@ ${transcriptText}
 \`\`\`json
 {
   "summary": "会議の概要をここに記述",
+  "topics": [
+    {
+      "title": "トピック1のタイトル",
+      "description": "トピック1の詳細説明（100-300文字）"
+    },
+    {
+      "title": "トピック2のタイトル",
+      "description": "トピック2の詳細説明（100-300文字）"
+    }
+  ],
   "decisions": [
     {
       "description": "決定事項の具体的な説明",
@@ -364,15 +386,25 @@ ${transcriptText}
       logger.info('パースされたLLMレスポンス', {
         decisionsCount: llmMinutes.decisions.length,
         nextActionsCount: llmMinutes.nextActions.length,
+        topicsCount: llmMinutes.topics?.length || 0,
         firstDecision: llmMinutes.decisions[0],
         firstNextAction: llmMinutes.nextActions[0],
       });
+
+      // トピックにIDと順序を追加
+      const topics = llmMinutes.topics?.map((topic, index) => ({
+        id: `topic-${Date.now()}-${index}`,
+        title: topic.title,
+        description: topic.description,
+        order: index,
+      }));
 
       // Minutesオブジェクトに変換
       const minutes: Minutes = {
         jobId,
         generatedAt: new Date().toISOString(),
         summary: llmMinutes.summary || '',
+        topics: topics && topics.length > 0 ? topics : undefined,
         decisions: llmMinutes.decisions.map((d) => ({
           id: uuidv4(),
           description: d.description,
@@ -396,6 +428,7 @@ ${transcriptText}
       logger.info('変換後のMinutesオブジェクト', {
         decisionsCount: minutes.decisions.length,
         nextActionsCount: minutes.nextActions.length,
+        topicsCount: minutes.topics?.length || 0,
         firstDecisionTimestamp: minutes.decisions[0]?.timestamp,
         firstNextActionTimestamp: minutes.nextActions[0]?.timestamp,
       });

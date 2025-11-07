@@ -9,6 +9,7 @@ export interface Minutes {
 
   // 議事録の内容
   summary: string;              // 概要
+  topics?: Topic[];             // トピック別詳細（オプショナル：後方互換性のため）
   decisions: Decision[];        // 決定事項
   nextActions: NextAction[];    // ネクストアクション
 
@@ -38,9 +39,20 @@ export interface Speaker {
   segments: number;             // 発言回数
 }
 
+export interface Topic {
+  id: string;
+  title: string;
+  description: string;
+  order: number;
+}
+
 // LLMからのレスポンス形式
 export interface LLMMinutesResponse {
   summary: string;
+  topics?: Array<{
+    title: string;
+    description: string;
+  }>;
   decisions: Array<{
     description: string;
     timestamp?: string;

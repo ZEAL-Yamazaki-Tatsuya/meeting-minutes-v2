@@ -6,8 +6,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
 import apiService from '@/lib/api-service';
-import { Minutes, Decision, NextAction } from '@/types';
+import { Minutes, Decision, NextAction, Topic } from '@/types';
 import ProtectedRoute from '@/components/protected-route';
+import TopicList from '@/components/topic-list';
+import TopicEditor from '@/components/topic-editor';
 
 /**
  * ローディングスピナーコンポーネント
@@ -59,6 +61,7 @@ function MinutesPageContent() {
   // 編集モード関連の状態
   const [isEditing, setIsEditing] = useState(false);
   const [editedSummary, setEditedSummary] = useState('');
+  const [editedTopics, setEditedTopics] = useState<Topic[]>([]);
   const [editedDecisions, setEditedDecisions] = useState<Decision[]>([]);
   const [editedNextActions, setEditedNextActions] = useState<NextAction[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +80,7 @@ function MinutesPageContent() {
         setMinutes(data);
         // 編集用の状態を初期化
         setEditedSummary(data.summary);
+        setEditedTopics(data.topics || []);
         setEditedDecisions(data.decisions || []);
         setEditedNextActions(data.nextActions || []);
         setError(null);
@@ -112,6 +116,7 @@ function MinutesPageContent() {
   const handleStartEdit = () => {
     if (minutes) {
       setEditedSummary(minutes.summary);
+      setEditedTopics(minutes.topics ? [...minutes.topics] : []);
       setEditedDecisions([...minutes.decisions]);
       setEditedNextActions([...minutes.nextActions]);
       setIsEditing(true);
@@ -122,6 +127,7 @@ function MinutesPageContent() {
   const handleCancelEdit = () => {
     if (minutes) {
       setEditedSummary(minutes.summary);
+      setEditedTopics(minutes.topics ? [...minutes.topics] : []);
       setEditedDecisions([...minutes.decisions]);
       setEditedNextActions([...minutes.nextActions]);
       setIsEditing(false);
@@ -141,6 +147,7 @@ function MinutesPageContent() {
 
       const updatedMinutes = await apiService.updateMinutes(jobId, {
         summary: editedSummary,
+        topics: editedTopics,
         decisions: editedDecisions,
         nextActions: editedNextActions,
       });
@@ -434,18 +441,41 @@ function MinutesPageContent() {
             <>
               {/* 概要セクション */}
               <SectionCard title="概要" icon="📋">
-                {isEditing ? (
-                  <textarea
-                    value={editedSummary}
-                    onChange={(e) => setEditedSummary(e.target.value)}
-                    className="w-full min-h-[120px] sm:min-h-[150px] p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                    placeholder="会議の概要を入力してください..."
-                  />
-                ) : (
-                  <div className="prose prose-sm sm:prose max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {minutes.summary}
-                    </ReactMarkdown>
+                {/* 全体概要 */}
+                <div className="mb-6">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 sm:mb-3">
+                    全体概要
+                  </h3>
+                  {isEditing ? (
+                    <textarea
+                      value={editedSummary}
+                      onChange={(e) => setEditedSummary(e.target.value)}
+                      className="w-full min-h-[120px] sm:min-h-[150px] p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                      placeholder="会議の概要を入力してください..."
+                    />
+                  ) : (
+                    <div className="prose prose-sm sm:prose max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {minutes.summary}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+
+                {/* トピック別詳細 */}
+                {(isEditing || (minutes.topics && minutes.topics.length > 0)) && (
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
+                      トピック別詳細
+                    </h3>
+                    {isEditing ? (
+                      <TopicEditor
+                        topics={editedTopics}
+                        onUpdate={setEditedTopics}
+                      />
+                    ) : (
+                      <TopicList topics={minutes.topics || []} />
+                    )}
                   </div>
                 )}
               </SectionCard>

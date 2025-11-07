@@ -51,6 +51,14 @@ export interface Speaker {
   segments: number;
 }
 
+// トピックの型定義
+export interface Topic {
+  id: string;
+  title: string;
+  description: string;
+  order: number;
+}
+
 // 議事録の型定義
 export interface Minutes {
   jobId: string;
@@ -61,6 +69,7 @@ export interface Minutes {
   transcript: string;
   formattedTranscript?: string; // 整形された文字起こし（話者・タイムスタンプ付き）
   speakers?: Speaker[];
+  topics?: Topic[]; // トピック別詳細（オプショナル：後方互換性のため）
 }
 
 // アップロードレスポンスの型定義

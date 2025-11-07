@@ -73,6 +73,12 @@ export interface UpdateMeetingJobInput {
   minutesS3Key?: string;
   errorMessage?: string;
   metadata?: MeetingJobMetadata;
+  topics?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    order: number;
+  }>;
 }
 
 export interface ListJobsQuery {
