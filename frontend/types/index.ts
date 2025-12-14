@@ -62,7 +62,10 @@ export interface Topic {
 // 議事録の型定義
 export interface Minutes {
   jobId: string;
+  userId: string;
   generatedAt: string;
+  videoFileName: string;
+  meetingTitle?: string;
   summary: string;
   decisions: Decision[];
   nextActions: NextAction[];

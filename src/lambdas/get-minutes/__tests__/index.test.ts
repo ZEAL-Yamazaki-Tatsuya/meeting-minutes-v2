@@ -80,6 +80,11 @@ describe('Get Minutes Lambda Handler', () => {
         return {
             pathParameters: { jobId },
             queryStringParameters: userId ? { userId } : null,
+            requestContext: {
+                authorizer: {
+                    claims: {}
+                }
+            } as any,
         } as any;
     }
 
@@ -103,8 +108,12 @@ describe('Get Minutes Lambda Handler', () => {
             expect(body.success).toBe(true);
             expect(body.data.jobId).toBe(mockJobId);
             expect(body.data.userId).toBe(mockUserId);
-            expect(body.data.minutesContent).toBe(mockMinutesContent);
-            expect(body.data.status).toBe('COMPLETED');
+            expect(body.data.videoFileName).toBe('test-video.mp4');
+            expect(body.data.meetingTitle).toBe('テスト会議');
+            expect(body.data.summary).toBeDefined();
+            expect(body.data.decisions).toBeDefined();
+            expect(body.data.nextActions).toBeDefined();
+            expect(body.data.transcript).toBeDefined();
         });
 
         it('議事録の内容が正しく返される', async () => {
@@ -120,10 +129,10 @@ describe('Get Minutes Lambda Handler', () => {
             const result = await handler(event);
 
             const body = JSON.parse(result.body);
-            expect(body.data.minutesContent).toContain('# 議事録');
-            expect(body.data.minutesContent).toContain('## 概要');
-            expect(body.data.minutesContent).toContain('## 決定事項');
-            expect(body.data.minutesContent).toContain('## ネクストアクション');
+            expect(body.data.summary).toBeDefined();
+            expect(body.data.decisions).toBeInstanceOf(Array);
+            expect(body.data.nextActions).toBeInstanceOf(Array);
+            expect(body.data.transcript).toBeDefined();
         });
     });
 
@@ -137,8 +146,8 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(400);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Bad Request');
-            expect(body.message).toContain('jobId is required');
+            expect(body.error.type).toBe('ValidationError');
+            expect(body.error.message).toContain('jobId is required');
         });
 
         it('userIdが指定されていない場合は400エラーを返す', async () => {
@@ -149,8 +158,8 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(400);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Bad Request');
-            expect(body.message).toContain('userId is required');
+            expect(body.error.type).toBe('ValidationError');
+            expect(body.error.message).toContain('認証が必要です');
         });
     });
 
@@ -166,8 +175,8 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(404);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Not Found');
-            expect(body.message).toContain('Job not found');
+            expect(body.error.type).toBe('NotFoundError');
+            expect(body.error.message).toContain('Job not found');
         });
     });
 
@@ -188,9 +197,9 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(400);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Bad Request');
-            expect(body.message).toContain('Job is not completed yet');
-            expect(body.message).toContain('TRANSCRIBING');
+            expect(body.error.type).toBe('ValidationError');
+            expect(body.error.message).toContain('Job is not completed yet');
+            expect(body.error.message).toContain('TRANSCRIBING');
         });
 
         it('minutesS3Keyが設定されていない場合は500エラーを返す', async () => {
@@ -209,7 +218,7 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(500);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Internal Server Error');
+            expect(body.error.type).toBe('InternalServerError');
         });
     });
 
@@ -227,7 +236,7 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(500);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Internal Server Error');
+            expect(body.error.type).toBe('InternalServerError');
         });
 
         it('S3レスポンスのBodyが空の場合は500エラーを返す', async () => {
@@ -245,7 +254,7 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(500);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Internal Server Error');
+            expect(body.error.type).toBe('InternalServerError');
         });
     });
 
@@ -259,7 +268,7 @@ describe('Get Minutes Lambda Handler', () => {
             expect(result.statusCode).toBe(500);
             const body = JSON.parse(result.body);
             expect(body.success).toBe(false);
-            expect(body.error).toBe('Internal Server Error');
+            expect(body.error.type).toBe('InternalServerError');
         });
     });
 
@@ -277,7 +286,7 @@ describe('Get Minutes Lambda Handler', () => {
             const result = await handler(event);
 
             expect(result.headers).toHaveProperty('Access-Control-Allow-Origin', '*');
-            expect(result.headers).toHaveProperty('Access-Control-Allow-Credentials', true);
+            expect(result.headers).toHaveProperty('Access-Control-Allow-Credentials', 'true');
             expect(result.headers).toHaveProperty('Content-Type', 'application/json');
         });
     });

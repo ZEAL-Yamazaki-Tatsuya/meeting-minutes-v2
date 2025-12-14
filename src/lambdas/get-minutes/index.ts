@@ -281,6 +281,8 @@ async function getMinutes(
                 jobId: job.jobId,
                 userId: job.userId,
                 generatedAt: job.updatedAt,
+                videoFileName: job.videoFileName,
+                meetingTitle: job.metadata?.meetingTitle,
                 summary: parsedMinutes.summary,
                 topics: parsedMinutes.topics,
                 decisions: parsedMinutes.decisions,
