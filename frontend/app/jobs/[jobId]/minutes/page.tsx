@@ -281,8 +281,8 @@ function MinutesPageContent() {
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div className="min-w-0 flex-1">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-                  議事録
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 break-words">
+                  {minutes?.meetingTitle || minutes?.videoFileName || '議事録'}
                 </h1>
                 {minutes && (
                   <p className="text-gray-600 text-xs sm:text-sm">
