@@ -259,11 +259,13 @@ class APIService {
 
   /**
    * AI検索を実行
+   * @param userId ユーザーID
    * @param query 検索クエリ
    * @param history 会話履歴
    * @returns 検索結果
    */
   async searchMinutes(
+    userId: string,
     query: string,
     history: { role: 'user' | 'assistant'; content: string }[]
   ): Promise<{
@@ -291,6 +293,7 @@ class APIService {
         timestamp: string;
       };
     }>('/api/minutes/search', {
+      userId,
       query,
       history,
     });

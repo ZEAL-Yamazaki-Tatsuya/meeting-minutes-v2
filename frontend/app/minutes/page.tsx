@@ -89,7 +89,10 @@ function MinutesPageContent() {
     query: string,
     history: { role: 'user' | 'assistant'; content: string }[]
   ) => {
-    return await apiService.searchMinutes(query, history);
+    if (!user?.userId) {
+      throw new Error('ユーザーIDが取得できません');
+    }
+    return await apiService.searchMinutes(user.userId, query, history);
   };
 
   return (
