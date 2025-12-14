@@ -52,7 +52,7 @@ export default function Home() {
           </div>
 
           {/* アクションボタン */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <button
               onClick={() => router.push('/upload')}
               className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-4 sm:py-5 lg:py-6 px-6 sm:px-8 rounded-lg shadow-lg transition-colors flex items-center justify-center space-x-2 sm:space-x-3 touch-manipulation"
@@ -91,6 +91,26 @@ export default function Home() {
                 />
               </svg>
               <span className="text-sm sm:text-base">ジョブ一覧を見る</span>
+            </button>
+
+            <button
+              onClick={() => router.push('/minutes')}
+              className="bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold py-4 sm:py-5 lg:py-6 px-6 sm:px-8 rounded-lg shadow-lg transition-colors flex items-center justify-center space-x-2 sm:space-x-3 touch-manipulation"
+            >
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              <span className="text-sm sm:text-base">議事録一覧を見る</span>
             </button>
           </div>
 

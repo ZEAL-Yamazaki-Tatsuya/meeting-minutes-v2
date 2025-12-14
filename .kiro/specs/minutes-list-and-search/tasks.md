@@ -350,7 +350,9 @@
 
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 9. 統合テストとデプロイ
+- [x] 9. 統合テストとデプロイ
+
+
 
 
 
@@ -374,7 +376,8 @@
   - _Requirements: All_
 
 
-- [ ] 9.3 統合テストを実施
+- [x] 9.3 統合テストを実施
+
   - 議事録一覧の表示確認
   - フィルター機能の動作確認
   - AI 検索の動作確認
