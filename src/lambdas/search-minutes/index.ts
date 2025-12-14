@@ -28,7 +28,7 @@ const MAX_HISTORY_LENGTH = 5; // 会話履歴の最大件数
 const MAX_MINUTES_COUNT = 100; // 検索対象の議事録の最大件数
 const MAX_RESULTS = 5; // 返却する検索結果の最大件数
 const TRANSCRIPT_LIMIT = 2000; // 文字起こし全文の最大文字数
-const SEARCH_TIMEOUT_MS = 60000; // 検索タイムアウト（60秒）
+const SEARCH_TIMEOUT_MS = 240000; // 検索タイムアウト（4分 = 240秒、Lambda 5分タイムアウトより短く設定）
 
 /**
  * リクエストボディの型定義
@@ -461,13 +461,8 @@ function buildSearchPrompt(
     systemPrompt: string;
     messages: Array<{ role: 'user' | 'assistant'; content: string }>;
 } {
-    // 議事録情報を構築
+    // 議事録情報を構築（文字起こし全文は含めず、概要・決定事項・ネクストアクションのみ）
     const minutesInfo = minutesContents.map((minutes, index) => {
-        // 文字起こし全文を制限
-        const limitedTranscript = minutes.transcript.length > TRANSCRIPT_LIMIT
-            ? minutes.transcript.substring(0, TRANSCRIPT_LIMIT) + '\n\n（以下省略）'
-            : minutes.transcript;
-
         // 決定事項をフォーマット
         const decisionsText = minutes.decisions.length > 0
             ? minutes.decisions.map((d, i) => `${i + 1}. ${d.description}`).join('\n')
@@ -487,8 +482,6 @@ function buildSearchPrompt(
 ${decisionsText}
 - ネクストアクション:
 ${nextActionsText}
-- 文字起こし（抜粋）:
-${limitedTranscript}
 `;
     }).join('\n---\n');
 

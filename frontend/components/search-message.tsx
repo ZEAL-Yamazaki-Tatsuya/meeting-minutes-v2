@@ -1,7 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-
 /**
  * 検索メッセージコンポーネント
  * ユーザーメッセージとAIメッセージ（検索結果含む）を表示
@@ -28,7 +26,6 @@ interface SearchMessageProps {
 }
 
 export default function SearchMessage({ message }: SearchMessageProps) {
-  const router = useRouter();
   const isUser = message.role === 'user';
 
   // タイムスタンプをフォーマット
@@ -52,9 +49,9 @@ export default function SearchMessage({ message }: SearchMessageProps) {
     });
   };
 
-  // 議事録詳細ページに遷移
+  // 議事録詳細ページに遷移（新しいタブで開く）
   const handleResultClick = (jobId: string) => {
-    router.push(`/jobs/${jobId}/minutes`);
+    window.open(`/jobs/${jobId}/minutes`, '_blank', 'noopener,noreferrer');
   };
 
   return (

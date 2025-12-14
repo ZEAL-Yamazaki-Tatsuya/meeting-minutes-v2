@@ -281,7 +281,7 @@ export class ComputeStack extends cdk.Stack {
       handler: 'handler',
       role: this.lambdaExecutionRole,
       environment: lambdaEnvironment,
-      timeout: cdk.Duration.seconds(60), // 検索処理のため60秒に設定
+      timeout: cdk.Duration.minutes(5), // Bedrockの処理時間を考慮して5分に延長
       memorySize: 1024, // Bedrockとの通信と複数議事録の処理のため1024MBに設定
       logRetention: logs.RetentionDays.ONE_WEEK,
       description: 'Bedrockを使用して議事録を横断検索する',
@@ -513,6 +513,8 @@ export class ComputeStack extends cdk.Stack {
     });
 
     // POST /api/minutes/search エンドポイント - AI検索
+    // 注意: API Gatewayの最大タイムアウトは29秒のため、長時間かかる検索はタイムアウトする可能性があります
+    // その場合、フロントエンドでリトライ処理を実装するか、非同期処理に変更する必要があります
     searchResource.addMethod(
       'POST',
       new apigateway.LambdaIntegration(this.searchMinutesHandler, {
