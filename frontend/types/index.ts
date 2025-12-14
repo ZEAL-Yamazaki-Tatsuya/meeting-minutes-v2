@@ -89,3 +89,31 @@ export interface ErrorResponse {
   error: string;
   message: string;
 }
+
+// 議事録サマリーの型定義（一覧表示用）
+export interface MinutesSummary {
+  jobId: string;
+  userId: string;
+  meetingName: string;
+  createdAt: string;
+  summaryPreview: string;
+  status: JobStatus;
+}
+
+// 議事録フィルターの型定義
+export interface MinutesFilters {
+  startDate?: string;
+  endDate?: string;
+  meetingName?: string;
+}
+
+// 議事録一覧レスポンスの型定義
+export interface MinutesListResponse {
+  minutes: MinutesSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

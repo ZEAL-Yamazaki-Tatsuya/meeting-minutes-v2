@@ -156,10 +156,88 @@ describe('Minutes Generator Lambda', () => {
       status: 'COMPLETED',
       minutesS3Key: 'test-user-id/test-job-id/minutes.md',
       videoDuration: 10,
+      summaryPreview: 'テスト会議の概要',
     });
 
     // S3への保存の検証
     expect(s3Mock.calls()).toHaveLength(2); // minutes.md と transcript.txt
+  });
+
+  it('概要が200文字を超える場合は切り詰めて保存する', async () => {
+    const event: MinutesGeneratorEvent = {
+      jobId: 'test-job-id',
+      userId: 'test-user-id',
+      transcriptS3Key: 'test-user-id/test-job-id/transcript.json',
+    };
+
+    const longSummary = 'あ'.repeat(250); // 250文字の概要
+
+    const mockTranscribeOutput = {
+      jobName: 'test-job',
+      accountId: '123456789',
+      status: 'COMPLETED',
+      results: {
+        transcripts: [{ transcript: 'テスト' }],
+        items: [
+          {
+            start_time: '0.0',
+            end_time: '10.0',
+            alternatives: [{ confidence: '0.99', content: 'テスト' }],
+            type: 'pronunciation' as const,
+          },
+        ],
+      },
+    };
+
+    const mockParsedTranscript = {
+      fullText: 'テスト',
+      duration: 10,
+      speakerCount: 1,
+      segments: [
+        {
+          speakerId: 'spk_0',
+          startTime: 0,
+          endTime: 10,
+          text: 'テスト',
+          confidence: 0.99,
+        },
+      ],
+    };
+
+    const mockMinutes = {
+      jobId: 'test-job-id',
+      generatedAt: new Date().toISOString(),
+      summary: longSummary,
+      decisions: [],
+      nextActions: [],
+      transcript: 'テスト',
+      speakers: [{ id: 'spk_0', segments: 1 }],
+    };
+
+    (mockTranscriptParser.fetchTranscriptFromS3 as jest.Mock).mockResolvedValue(
+      mockTranscribeOutput
+    );
+    (mockTranscriptParser.parseTranscript as jest.Mock).mockReturnValue(mockParsedTranscript);
+    (mockTranscriptParser.formatTranscript as jest.Mock).mockReturnValue('テスト');
+    (mockBedrockClient.generateMinutes as jest.Mock).mockResolvedValue(mockMinutes);
+
+    s3Mock.on(PutObjectCommand).resolves({});
+
+    initializeDependencies(
+      new S3Client({}),
+      mockTranscriptParser as TranscriptParser,
+      mockBedrockClient as BedrockClient,
+      mockRepository as MeetingJobRepository
+    );
+
+    await handler(event);
+
+    // summaryPreview が200文字 + "..." になっていることを確認
+    expect(mockRepository.updateJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summaryPreview: 'あ'.repeat(200) + '...',
+      })
+    );
   });
 
   it('エラーが発生した場合はステータスをFAILEDに更新する', async () => {

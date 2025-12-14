@@ -144,6 +144,11 @@ export class MeetingJobRepository {
             expressionAttributeValues[':minutesS3Key'] = input.minutesS3Key;
         }
 
+        if (input.summaryPreview !== undefined) {
+            updateExpressions.push('summaryPreview = :summaryPreview');
+            expressionAttributeValues[':summaryPreview'] = input.summaryPreview;
+        }
+
         if (input.errorMessage !== undefined) {
             updateExpressions.push('errorMessage = :errorMessage');
             expressionAttributeValues[':errorMessage'] = input.errorMessage;

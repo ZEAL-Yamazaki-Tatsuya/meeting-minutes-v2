@@ -1,6 +1,281 @@
 import { test, expect } from '@playwright/test';
 import { authenticateUser } from './helpers/test-utils';
 
+test.describe('議事録一覧とAI検索', () => {
+  test.beforeEach(async ({ page }) => {
+    // 認証トークンをモック
+    await authenticateUser(page);
+  });
+
+  test('議事録一覧ページが正しく表示される', async ({ page }) => {
+    // 議事録一覧ページに移動
+    await page.goto('/minutes');
+    
+    // ページタイトルを確認
+    await expect(page.locator('h1')).toContainText('議事録一覧');
+    
+    // ローディング状態が解消されることを確認
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('議事録リストが表示される', async ({ page }) => {
+    // APIレスポンスをモック
+    await page.route('**/api/minutes*', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            minutes: [
+              {
+                jobId: 'job-1',
+                meetingName: 'テスト会議1',
+                createdAt: '2025-12-14T10:00:00Z',
+                summaryPreview: 'これはテスト会議1の概要です...'
+              },
+              {
+                jobId: 'job-2',
+                meetingName: 'テスト会議2',
+                createdAt: '2025-12-13T15:00:00Z',
+                summaryPreview: 'これはテスト会議2の概要です...'
+              }
+            ],
+            pagination: {
+              page: 1,
+              limit: 20,
+              total: 2,
+              totalPages: 1
+            }
+          }
+        })
+      });
+    });
+    
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // 議事録リストアイテムが表示されることを確認
+    const listItems = page.locator('[data-testid="minutes-list-item"]');
+    await expect(listItems).toHaveCount(2);
+    
+    // 会議名が表示されることを確認
+    await expect(listItems.first()).toContainText('テスト会議1');
+  });
+
+  test('フィルター機能が動作する', async ({ page }) => {
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // フィルターコンポーネントが表示されることを確認
+    const filterSection = page.locator('[data-testid="minutes-filter"]');
+    await expect(filterSection).toBeVisible();
+    
+    // 会議名フィルターに入力
+    const meetingNameInput = page.locator('input[name="meetingName"]');
+    if (await meetingNameInput.isVisible()) {
+      await meetingNameInput.fill('テスト');
+      
+      // フィルター適用ボタンをクリック
+      const applyButton = page.locator('button:has-text("適用")');
+      if (await applyButton.isVisible()) {
+        await applyButton.click();
+      }
+    }
+  });
+
+  test('ページネーションが動作する', async ({ page }) => {
+    // 複数ページのデータをモック
+    await page.route('**/api/minutes*', async route => {
+      const url = new URL(route.request().url());
+      const page_num = url.searchParams.get('page') || '1';
+      
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            minutes: Array.from({ length: 20 }, (_, i) => ({
+              jobId: `job-${page_num}-${i}`,
+              meetingName: `会議 ${page_num}-${i}`,
+              createdAt: '2025-12-14T10:00:00Z',
+              summaryPreview: `概要 ${page_num}-${i}`
+            })),
+            pagination: {
+              page: parseInt(page_num),
+              limit: 20,
+              total: 45,
+              totalPages: 3
+            }
+          }
+        })
+      });
+    });
+    
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // ページネーションコンポーネントが表示されることを確認
+    const pagination = page.locator('[data-testid="pagination"]');
+    await expect(pagination).toBeVisible();
+    
+    // 次のページボタンをクリック
+    const nextButton = page.locator('button:has-text("次へ")');
+    if (await nextButton.isVisible()) {
+      await nextButton.click();
+      await page.waitForLoadState('networkidle');
+    }
+  });
+
+  test('AI検索ボタンが表示される', async ({ page }) => {
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // AI検索ボタンを確認
+    const searchButton = page.locator('button[data-testid="ai-search-button"]');
+    await expect(searchButton).toBeVisible();
+  });
+
+  test('AI検索モーダルが開く', async ({ page }) => {
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // AI検索ボタンをクリック
+    const searchButton = page.locator('button[data-testid="ai-search-button"]');
+    await searchButton.click();
+    
+    // モーダルが表示されることを確認
+    const modal = page.locator('[data-testid="ai-search-modal"]');
+    await expect(modal).toBeVisible();
+    
+    // 検索入力欄が表示されることを確認
+    const searchInput = page.locator('textarea[data-testid="search-input"]');
+    await expect(searchInput).toBeVisible();
+  });
+
+  test('AI検索で質問を送信できる', async ({ page }) => {
+    // 検索APIレスポンスをモック
+    await page.route('**/api/minutes/search', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            message: 'テスト検索結果です',
+            results: [
+              {
+                jobId: 'job-1',
+                meetingName: 'テスト会議',
+                createdAt: '2025-12-14T10:00:00Z',
+                excerpt: 'これは検索結果の抜粋です',
+                relevanceScore: 0.95
+              }
+            ],
+            timestamp: '2025-12-14T12:00:00Z'
+          }
+        })
+      });
+    });
+    
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // AI検索モーダルを開く
+    await page.click('button[data-testid="ai-search-button"]');
+    
+    // 質問を入力
+    const searchInput = page.locator('textarea[data-testid="search-input"]');
+    await searchInput.fill('テスト質問');
+    
+    // 送信ボタンをクリック
+    const sendButton = page.locator('button[data-testid="send-button"]');
+    await sendButton.click();
+    
+    // 検索結果が表示されることを確認
+    await expect(page.locator('text=テスト検索結果です')).toBeVisible();
+  });
+
+  test('AI検索モーダルを閉じることができる', async ({ page }) => {
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // AI検索モーダルを開く
+    await page.click('button[data-testid="ai-search-button"]');
+    
+    // モーダルが表示されることを確認
+    const modal = page.locator('[data-testid="ai-search-modal"]');
+    await expect(modal).toBeVisible();
+    
+    // 閉じるボタンをクリック
+    const closeButton = page.locator('button[data-testid="close-modal"]');
+    await closeButton.click();
+    
+    // モーダルが非表示になることを確認
+    await expect(modal).not.toBeVisible();
+  });
+
+  test('議事録リストアイテムをクリックすると詳細ページに遷移する', async ({ page }) => {
+    // APIレスポンスをモック
+    await page.route('**/api/minutes*', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            minutes: [
+              {
+                jobId: 'job-123',
+                meetingName: 'テスト会議',
+                createdAt: '2025-12-14T10:00:00Z',
+                summaryPreview: 'テスト概要'
+              }
+            ],
+            pagination: {
+              page: 1,
+              limit: 20,
+              total: 1,
+              totalPages: 1
+            }
+          }
+        })
+      });
+    });
+    
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // 議事録リストアイテムをクリック
+    const listItem = page.locator('[data-testid="minutes-list-item"]').first();
+    await listItem.click();
+    
+    // 詳細ページに遷移することを確認
+    await expect(page).toHaveURL(/\/jobs\/job-123\/minutes/);
+  });
+
+  test('エラー時にエラーメッセージが表示される', async ({ page }) => {
+    // APIエラーをモック
+    await page.route('**/api/minutes*', async route => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: false,
+          error: 'Internal Server Error'
+        })
+      });
+    });
+    
+    await page.goto('/minutes');
+    await page.waitForLoadState('networkidle');
+    
+    // エラーメッセージが表示されることを確認
+    await expect(page.locator('text=議事録一覧の取得に失敗しました')).toBeVisible();
+  });
+});
+
 test.describe.skip('議事録表示・編集・ダウンロード', () => {
   // このテストスイートは実際のジョブIDと議事録データが必要なためスキップ
   // 実装時には、テスト用のデータを準備してください

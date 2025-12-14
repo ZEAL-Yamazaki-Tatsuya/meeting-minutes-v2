@@ -136,13 +136,21 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
 
     logger.info('整形されたTranscriptをS3に保存', { transcriptTextS3Key });
 
-    // 5. DynamoDBのジョブステータスを COMPLETED に更新
+    // 6. 概要の最初の200文字を抽出（一覧表示用）
+    const summaryPreview = extractSummaryPreview(minutes.summary);
+    logger.info('概要プレビューを抽出', { 
+      summaryLength: minutes.summary.length, 
+      previewLength: summaryPreview.length 
+    });
+
+    // 7. DynamoDBのジョブステータスを COMPLETED に更新
     await repository.updateJob({
       jobId,
       userId,
       status: 'COMPLETED',
       minutesS3Key,
       videoDuration: parsedTranscript.duration,
+      summaryPreview,
     });
 
     // 全体の処理時間を記録
@@ -195,6 +203,27 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
     // Step Functions用のエラーハンドリング
     return await handleStepFunctionError(err, logger, { jobId, userId, transcriptS3Key });
   }
+}
+
+/**
+ * 概要の最初の200文字を抽出する（一覧表示用）
+ * 文字数が200文字を超える場合は、200文字で切り詰めて「...」を追加
+ */
+function extractSummaryPreview(summary: string): string {
+  if (!summary) {
+    return '';
+  }
+
+  // 改行や余分な空白を削除
+  const cleanedSummary = summary.replace(/\s+/g, ' ').trim();
+
+  // 200文字以内の場合はそのまま返す
+  if (cleanedSummary.length <= 200) {
+    return cleanedSummary;
+  }
+
+  // 200文字で切り詰めて「...」を追加
+  return cleanedSummary.substring(0, 200) + '...';
 }
 
 /**

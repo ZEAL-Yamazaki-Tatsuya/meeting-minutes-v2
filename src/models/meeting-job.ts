@@ -41,6 +41,9 @@ export interface MeetingJob {
   transcriptS3Key?: string;
   minutesS3Key?: string;
 
+  // 議事録情報
+  summaryPreview?: string;    // 概要の最初の200文字（一覧表示用）
+
   // エラー情報
   errorMessage?: string;
 
@@ -71,6 +74,7 @@ export interface UpdateMeetingJobInput {
   transcribeJobName?: string;
   transcriptS3Key?: string;
   minutesS3Key?: string;
+  summaryPreview?: string;
   errorMessage?: string;
   metadata?: MeetingJobMetadata;
   topics?: Array<{

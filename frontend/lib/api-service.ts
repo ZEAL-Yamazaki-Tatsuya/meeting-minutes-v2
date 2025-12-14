@@ -1,9 +1,12 @@
 import apiClient from './api-client';
+import cacheStorage from './cache';
 import {
   Job,
   Minutes,
   UploadResponse,
   JobListResponse,
+  MinutesListResponse,
+  MinutesFilters,
 } from '@/types';
 
 /**
@@ -184,6 +187,111 @@ class APIService {
     }>(`/api/jobs/${jobId}/chat`, {
       message,
       context,
+      history,
+    });
+    return response.data.data;
+  }
+
+  /**
+   * 議事録一覧を取得
+   * @param userId ユーザーID
+   * @param page ページ番号（デフォルト: 1）
+   * @param limit 1ページあたりの件数（デフォルト: 20）
+   * @param filters フィルター条件
+   * @param useCache キャッシュを使用するか（デフォルト: true）
+   * @returns 議事録一覧
+   */
+  async fetchMinutes(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+    filters?: MinutesFilters,
+    useCache: boolean = true
+  ): Promise<MinutesListResponse> {
+    // キャッシュキーを生成
+    const cacheKey = cacheStorage.generateKey(userId, page, limit, filters);
+
+    // キャッシュを確認
+    if (useCache) {
+      const cachedData = cacheStorage.get<MinutesListResponse>(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+    }
+
+    // キャッシュがない場合はAPI呼び出し
+    const params: Record<string, string> = {
+      page: page.toString(),
+      limit: limit.toString(),
+    };
+
+    // フィルター条件を追加
+    if (filters?.startDate) {
+      params.startDate = filters.startDate;
+    }
+    if (filters?.endDate) {
+      params.endDate = filters.endDate;
+    }
+    if (filters?.meetingName) {
+      params.meetingName = filters.meetingName;
+    }
+
+    const response = await apiClient.get<{ success: boolean; data: MinutesListResponse }>(
+      '/api/minutes',
+      { params }
+    );
+
+    // レスポンスをキャッシュに保存
+    if (useCache) {
+      cacheStorage.set(cacheKey, response.data.data);
+    }
+
+    return response.data.data;
+  }
+
+  /**
+   * 議事録キャッシュをクリア
+   * @param userId ユーザーID
+   */
+  clearMinutesCache(userId: string): void {
+    cacheStorage.clearUserCache(userId);
+  }
+
+  /**
+   * AI検索を実行
+   * @param query 検索クエリ
+   * @param history 会話履歴
+   * @returns 検索結果
+   */
+  async searchMinutes(
+    query: string,
+    history: { role: 'user' | 'assistant'; content: string }[]
+  ): Promise<{
+    message: string;
+    results: {
+      jobId: string;
+      meetingName: string;
+      createdAt: string;
+      excerpt: string;
+      relevanceScore: number;
+    }[];
+    timestamp: string;
+  }> {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: {
+        message: string;
+        results: {
+          jobId: string;
+          meetingName: string;
+          createdAt: string;
+          excerpt: string;
+          relevanceScore: number;
+        }[];
+        timestamp: string;
+      };
+    }>('/api/minutes/search', {
+      query,
       history,
     });
     return response.data.data;

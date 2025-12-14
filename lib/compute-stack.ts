@@ -33,6 +33,8 @@ export class ComputeStack extends cdk.Stack {
   public readonly checkTranscribeStatus: lambda.Function;
   public readonly getJobStatusHandler: lambda.Function;
   public readonly listJobsHandler: lambda.Function;
+  public readonly listMinutesHandler: lambda.Function;
+  public readonly searchMinutesHandler: lambda.Function;
   public readonly getMinutesHandler: lambda.Function;
   public readonly downloadMinutesHandler: lambda.Function;
   public readonly updateMinutesHandler: lambda.Function;
@@ -250,6 +252,48 @@ export class ComputeStack extends cdk.Stack {
       },
     });
 
+    // List Minutes Lambda
+    this.listMinutesHandler = new nodejs.NodejsFunction(this, 'ListMinutesHandler', {
+      functionName: `${appName}-list-minutes-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: path.join(__dirname, '../src/lambdas/list-minutes/index.ts'),
+      handler: 'handler',
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: 'ユーザーの議事録一覧を取得する（ページネーションとフィルター機能付き）',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
+    });
+
+    // Search Minutes Lambda
+    this.searchMinutesHandler = new nodejs.NodejsFunction(this, 'SearchMinutesHandler', {
+      functionName: `${appName}-search-minutes-${environment}`,
+      runtime: lambda.Runtime.NODEJS_18_X,
+      entry: path.join(__dirname, '../src/lambdas/search-minutes/index.ts'),
+      handler: 'handler',
+      role: this.lambdaExecutionRole,
+      environment: lambdaEnvironment,
+      timeout: cdk.Duration.seconds(60), // 検索処理のため60秒に設定
+      memorySize: 1024, // Bedrockとの通信と複数議事録の処理のため1024MBに設定
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      description: 'Bedrockを使用して議事録を横断検索する',
+      tracing: lambda.Tracing.ACTIVE, // X-Rayトレーシングを有効化
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        externalModules: ['@aws-sdk/*'],
+        forceDockerBundling: false,
+      },
+    });
+
     // Get Minutes Lambda
     this.getMinutesHandler = new nodejs.NodejsFunction(this, 'GetMinutesHandler', {
       functionName: `${appName}-get-minutes-${environment}`,
@@ -429,6 +473,51 @@ export class ComputeStack extends cdk.Stack {
       'GET',
       new apigateway.LambdaIntegration(this.listJobsHandler, {
         proxy: true,
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
+    );
+
+    // /api/minutes リソース
+    const minutesListResource = apiResource.addResource('minutes');
+    
+    // CORSプリフライトを追加
+    minutesListResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['GET', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+
+    // GET /api/minutes エンドポイント - 議事録一覧取得
+    minutesListResource.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(this.listMinutesHandler, {
+        proxy: true,
+      }),
+      {
+        authorizer: authorizer,
+        authorizationType: authorizer ? apigateway.AuthorizationType.COGNITO : apigateway.AuthorizationType.NONE,
+      }
+    );
+
+    // /api/minutes/search リソース
+    const searchResource = minutesListResource.addResource('search');
+    
+    // CORSプリフライトを追加
+    searchResource.addCorsPreflight({
+      allowOrigins: ['*'],
+      allowMethods: ['POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'X-Amz-Date', 'Authorization', 'X-Api-Key'],
+    });
+
+    // POST /api/minutes/search エンドポイント - AI検索
+    searchResource.addMethod(
+      'POST',
+      new apigateway.LambdaIntegration(this.searchMinutesHandler, {
+        proxy: true,
+        timeout: cdk.Duration.seconds(29), // API Gatewayの最大タイムアウトは29秒
       }),
       {
         authorizer: authorizer,
@@ -652,6 +741,18 @@ export class ComputeStack extends cdk.Stack {
       value: this.listJobsHandler.functionArn,
       description: 'List Jobs Lambda ARN',
       exportName: `${appName}-list-jobs-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'ListMinutesHandlerArn', {
+      value: this.listMinutesHandler.functionArn,
+      description: 'List Minutes Lambda ARN',
+      exportName: `${appName}-list-minutes-arn-${environment}`,
+    });
+
+    new cdk.CfnOutput(this, 'SearchMinutesHandlerArn', {
+      value: this.searchMinutesHandler.functionArn,
+      description: 'Search Minutes Lambda ARN',
+      exportName: `${appName}-search-minutes-arn-${environment}`,
     });
 
     new cdk.CfnOutput(this, 'GetMinutesHandlerArn', {
