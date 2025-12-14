@@ -258,7 +258,7 @@ function MinutesPageContent() {
         <div className="max-w-5xl mx-auto">
           {/* 戻るボタン */}
           <button
-            onClick={() => router.push(`/jobs/${jobId}`)}
+            onClick={() => router.push('/minutes')}
             className="mb-4 sm:mb-6 text-blue-600 hover:text-blue-800 active:text-blue-900 font-medium flex items-center touch-manipulation py-2 px-3 text-sm sm:text-base"
           >
             <svg
@@ -274,7 +274,7 @@ function MinutesPageContent() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            ジョブ詳細に戻る
+            議事録一覧に戻る
           </button>
 
           {/* ヘッダー */}
