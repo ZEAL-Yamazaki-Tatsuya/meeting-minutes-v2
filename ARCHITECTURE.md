@@ -176,9 +176,11 @@ Step Functions → Minutes Lambda → Bedrock → S3
 ## セキュリティアーキテクチャ
 
 ### 認証・認可
-- Amazon Cognitoによるユーザー認証（オプション）
+- Amazon Cognitoによるユーザー認証
+- 自己登録可能（メールアドレス確認必須）
 - API認証用のJWTトークン
 - サービス間認証用のIAMロール
+- Cognito Authorizerによる保護されたAPIエンドポイント
 
 ### データ保護
 - **転送中**: すべての接続でTLS 1.2以上
@@ -252,13 +254,20 @@ Step Functions → Minutes Lambda → Bedrock → S3
 
 ## 将来の拡張
 
-### フェーズ2
+### フェーズ2（実装済み）
+- ✅ トピック編集機能
+- ✅ AI検索機能（セマンティック検索）
+- ✅ チャットQ&A機能
+- ✅ 認証機能（Cognito）
+- ✅ レスポンシブデザイン
+
+### フェーズ3（計画中）
 - ライブ会議のリアルタイム文字起こし
 - 多言語サポート
 - カスタム議事録テンプレート
 - カレンダーシステムとの統合
 
-### フェーズ3
+### フェーズ4（将来）
 - 共同編集機能
 - アクションアイテム追跡
 - プロジェクト管理ツールとの統合
@@ -266,9 +275,13 @@ Step Functions → Minutes Lambda → Bedrock → S3
 
 ## 技術スタック
 
-### インフラストラクチャ
-- AWS CDK (TypeScript)
-- CloudFormation
+### フロントエンド
+- Next.js 14 (App Router)
+- React 18
+- TypeScript
+- TailwindCSS
+- TanStack React Query
+- Axios
 
 ### バックエンド
 - Node.js 18+
@@ -282,17 +295,21 @@ Step Functions → Minutes Lambda → Bedrock → S3
 
 ### AI/ML
 - AWS Transcribe
-- Amazon Bedrock (Claude 3)
+- Amazon Bedrock (Claude 3.5 Sonnet v2)
+
+### 認証
+- Amazon Cognito
 
 ### フロントエンド
 - Next.js 14
-- React
+- React 18
 - TypeScript
 - TailwindCSS
 
 ### DevOps
-- GitHub Actions / AWS CodePipeline
+- GitHub Actions
 - Jest（テスト）
+- Playwright（E2Eテスト）
 - ESLint（リント）
 
 ## 開発ワークフロー

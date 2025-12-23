@@ -38,12 +38,15 @@ https://main.d1iv2q5yh6oc7s.amplifyapp.com
 ## 主な機能
 
 - 📤 **ファイルアップロード**: ドラッグ&ドロップまたはファイル選択でMP4ファイルをアップロード
-- 🎤 **自動文字起こし**: AWS Transcribeによる高精度な音声認識
+- 🎤 **自動文字起こし**: AWS Transcribeによる高精度な音声認識（話者識別付き）
 - 🤖 **AI議事録生成**: Amazon Bedrock（Claude 3.5 Sonnet v2）で構造化された議事録を自動生成
 - 🎯 **会議コンテキスト指定**: 会議の種類、出席者、重点項目を指定して議事録の精度を向上
+- 📝 **トピック編集**: 議事録のトピックを追加・編集・削除、ドラッグ&ドロップで順序変更
+- 🔍 **AI検索機能**: 自然言語で議事録を検索（セマンティック検索）
+- 💬 **チャットQ&A**: 議事録の内容について質問できるAIチャット機能
 - 📊 **リアルタイム進捗表示**: 処理状況をリアルタイムで確認
 - 💾 **Markdownダウンロード**: 生成された議事録をダウンロード
-- 🔐 **認証機能**: Amazon Cognitoによるユーザー認証
+- 🔐 **認証機能**: Amazon Cognitoによるユーザー認証（自己登録可能）
 
 ### 🆕 議事録精度向上機能
 
@@ -54,21 +57,35 @@ https://main.d1iv2q5yh6oc7s.amplifyapp.com
 - **重点整理項目**: 決定事項、ネクストアクション、課題・リスク、議論のポイント
 - **追加の指示**: 技術的な詳細を重視するなど、カスタム指示
 
+### 🎨 議事録の構成
+
+生成される議事録には以下の情報が含まれます：
+
+- **要約（Summary）**: 会議全体の簡潔なまとめ
+- **トピック別詳細（Topics）**: 議論された主要なテーマ（編集可能）
+- **決定事項（Decisions）**: すべての決定事項を網羅的に記録（タイムスタンプ付き）
+- **ネクストアクション（Next Actions）**: すべてのアクションアイテムを網羅的に記録（担当者・期限・タイムスタンプ付き）
+
 ## アーキテクチャ
 
 このアプリケーションはAWS上の完全サーバーレスアーキテクチャを使用しています:
 
 ### フロントエンド
 - **Next.js 14** (App Router) with TypeScript
-- **TailwindCSS** でスタイリング
-- **React Hot Toast** で通知表示
+- **React 18** - UIライブラリ
+- **TailwindCSS** - スタイリング
+- **TanStack React Query** - サーバー状態管理
+- **Axios** - HTTPクライアント
+- **React Hot Toast** - 通知表示
+- **React Markdown** - マークダウンレンダリング
 
 ### バックエンド
 - **AWS Lambda**: 各種処理を実行するサーバーレス関数
-- **API Gateway**: RESTful APIエンドポイント
+- **API Gateway**: RESTful APIエンドポイント（Cognito Authorizer統合）
 - **Step Functions**: ワークフローオーケストレーション
 - **AWS Transcribe**: 音声文字起こしと話者識別
-- **Amazon Bedrock**: Claude 3を使用した議事録生成
+- **Amazon Bedrock**: Claude 3.5 Sonnet v2を使用した議事録生成・検索・チャット
+- **Amazon Cognito**: ユーザー認証・認可
 
 ### ストレージ
 - **S3**: 動画ファイルと議事録の保存
@@ -258,7 +275,7 @@ npm run dev
 
 ### コンピュートスタック (`meeting-minutes-generator-compute-dev`)
 
-- **Lambda関数（9個）**:
+- **Lambda関数（12個）**:
   - Upload Handler: Presigned URL生成
   - Start Processing: Step Functions起動
   - Transcribe Trigger: Transcribeジョブ開始
@@ -268,6 +285,9 @@ npm run dev
   - List Jobs: ジョブ一覧取得
   - Get Minutes: 議事録取得
   - Download Minutes: ダウンロードURL生成
+  - Update Minutes: 議事録更新（トピック編集）
+  - Search Minutes: AI検索（Bedrock）
+  - Chat Handler: チャットQ&A（Bedrock）
 
 - **Step Functions ステートマシン**:
   - 文字起こしから議事録生成までのワークフロー
@@ -410,7 +430,10 @@ npm test -- test/compute-stack.test.ts
 
 ### 議事録
 - `GET /api/jobs/{jobId}/minutes` - 議事録取得
+- `PUT /api/jobs/{jobId}/minutes` - 議事録更新（トピック編集）
 - `GET /api/jobs/{jobId}/download` - ダウンロードURL取得
+- `POST /api/search` - AI検索
+- `POST /api/jobs/{jobId}/chat` - チャットQ&A
 
 詳細は`ARCHITECTURE.md`を参照してください。
 
@@ -422,21 +445,30 @@ npm test -- test/compute-stack.test.ts
 - [x] ファイルアップロード機能
 - [x] AWS Transcribe統合（文字起こし・話者識別）
 - [x] Step Functionsワークフロー
-- [x] 議事録生成機能（Amazon Bedrock）
+- [x] 議事録生成機能（Amazon Bedrock Claude 3.5 Sonnet v2）
 - [x] ジョブステータス取得API
 - [x] 議事録取得・ダウンロード機能
-- [x] フロントエンドプロジェクトのセットアップ
+- [x] フロントエンドプロジェクトのセットアップ（Next.js 14 + React 18）
 - [x] ファイルアップロードUI
 - [x] ジョブ一覧・詳細UI
-- [x] 議事録表示・編集・ダウンロードUI
+- [x] 議事録表示・ダウンロードUI
+- [x] トピック編集機能（追加・編集・削除・順序変更）
+- [x] AI検索機能（セマンティック検索）
+- [x] チャットQ&A機能
+- [x] 認証機能（Amazon Cognito）
+- [x] レスポンシブデザイン
+- [x] CI/CDパイプライン（GitHub Actions）
+- [x] モニタリングとアラート設定（CloudWatch）
+- [x] E2Eテスト（Playwright）
 
 ### 🚧 今後の実装予定
-- [ ] レスポンシブデザインの最適化
-- [ ] 認証機能（Amazon Cognito）
-- [ ] エラーハンドリングとログの統合
-- [ ] 統合テストとE2Eテスト
-- [ ] CI/CDパイプライン
-- [ ] モニタリングとアラート設定
+- [ ] 多言語サポート（英語、中国語など）
+- [ ] リアルタイム文字起こし
+- [ ] カスタム議事録テンプレート
+- [ ] カレンダーシステムとの統合
+- [ ] 共同編集機能
+- [ ] アクションアイテム追跡
+- [ ] プロジェクト管理ツールとの統合
 
 ## トラブルシューティング
 
@@ -493,14 +525,16 @@ curl -X POST "https://YOUR-API-URL/dev/api/jobs/{jobId}/start?userId=test-user-i
 月間100ファイル（各10分）を処理する場合の概算コスト（東京リージョン）:
 
 - **AWS Transcribe**: 約$24（100ファイル × 10分 × $0.024/分）
-- **Amazon Bedrock**: 約$3（Claude 3 Sonnet使用）
-- **Lambda**: 約$1（実行時間とメモリ使用量による）
+- **Amazon Bedrock**: 約$5-8（Claude 3.5 Sonnet v2使用、議事録生成・検索・チャット含む）
+- **Lambda**: 約$1-2（実行時間とメモリ使用量による）
 - **S3**: 約$1（ストレージとデータ転送）
 - **DynamoDB**: 約$1（オンデマンド課金）
 - **API Gateway**: 約$0.35（100,000リクエスト）
 - **Step Functions**: 約$0.25（ステート遷移数による）
+- **Cognito**: 無料枠内（MAU 50,000まで無料）
+- **Amplify Hosting**: 約$1-2（ビルド時間とデータ転送）
 
-**合計**: 約$30-35/月
+**合計**: 約$35-40/月
 
 ※ 実際のコストは使用量により変動します。AWS Cost Explorerで定期的に確認してください。
 
@@ -512,8 +546,11 @@ curl -X POST "https://YOUR-API-URL/dev/api/jobs/{jobId}/start?userId=test-user-i
 - ✅ IAMロールは最小権限の原則に従う
 - ✅ API GatewayでCORSを適切に設定
 - ✅ CloudWatch Logsで監査ログを記録
-- ⚠️ 本番環境では認証機能（Cognito）の実装を推奨
+- ✅ Amazon Cognitoによるユーザー認証・認可
+- ✅ JWTトークンによるAPI保護
+- ✅ IP制限（VPN接続必須）
 - ⚠️ 本番環境ではAPI Gatewayでレート制限を設定
+- ⚠️ 本番環境ではMFAの有効化を推奨
 
 ## ライセンス
 
