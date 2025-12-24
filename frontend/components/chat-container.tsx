@@ -19,7 +19,7 @@ interface ChatContainerProps {
   minutesContext: ChatContext;
 }
 
-const MAX_HISTORY = 1; // 会話履歴の最大件数（Bedrockの応答時間を短縮するため1件に削減）
+const MAX_HISTORY_TO_SEND = 1; // バックエンドに送信する会話履歴の最大件数（Bedrockの応答時間を短縮するため1件に削減）
 
 interface ErrorState {
   type: ErrorType;
@@ -68,21 +68,13 @@ export default function ChatContainer({
 
     while (retryCount <= maxRetries) {
       try {
-        // 会話履歴を準備（最大3件）
+        // 会話履歴を準備（バックエンドには最新1件のみ送信）
         const history = messages
-          .slice(-MAX_HISTORY)
+          .slice(-MAX_HISTORY_TO_SEND)
           .map((msg) => ({
             role: msg.role,
             content: msg.content,
           }));
-
-        // 会話履歴が制限を超えた場合、ユーザーに通知
-        if (messages.length > MAX_HISTORY * 2 && retryCount === 0) {
-          toast('古い会話履歴は自動的にクリアされました', {
-            icon: 'ℹ️',
-            duration: 3000,
-          });
-        }
 
         // API呼び出し
         const response = await apiService.sendChatMessage(
@@ -100,14 +92,7 @@ export default function ChatContainer({
           timestamp: response.timestamp,
         };
 
-        setMessages((prev) => {
-          const newMessages = [...prev, aiMessage];
-          // 最大1件の会話ペア（2メッセージ）を保持
-          if (newMessages.length > MAX_HISTORY * 2) {
-            return newMessages.slice(-MAX_HISTORY * 2);
-          }
-          return newMessages;
-        });
+        setMessages((prev) => [...prev, aiMessage]);
 
         // 成功したらループを抜ける
         break;
