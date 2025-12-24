@@ -16,7 +16,7 @@ const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'apac.anthropic.claude-
 // 定数
 const MAX_MESSAGE_LENGTH = 1000; // 質問の最大文字数
 const MAX_CONTEXT_SIZE = 100000; // コンテキストの最大文字数（文字起こし全文を含めるため100,000文字に拡大）
-const MAX_HISTORY_LENGTH = 3; // 会話履歴の最大件数（Bedrockの応答時間を短縮するため3件に削減）
+const MAX_HISTORY_LENGTH = 1; // 会話履歴の最大件数（Bedrockの応答時間を短縮するため1件に削減）
 const BEDROCK_TIMEOUT_MS = 55000; // Bedrockのタイムアウト（55秒）- API Gatewayの60秒タイムアウトを考慮
 
 // クライアントの初期化
@@ -310,8 +310,11 @@ function buildPromptWithHistory(request: ChatRequest): {
         .join('\n')
     : 'なし';
 
-  // 文字起こし全文（制限なし）
-  const limitedTranscript = request.context.transcript;
+  // 文字起こし全文を常に渡す
+  const transcriptSection = `【文字起こし全文】
+${request.context.transcript}
+
+`;
 
   // システムプロンプト
   const systemPrompt = `あなたは議事録アシスタントです。
@@ -326,13 +329,11 @@ ${decisionsText}
 【ネクストアクション】
 ${nextActionsText}
 
-【文字起こし全文】
-${limitedTranscript}
-
-# 回答のガイドライン
+${transcriptSection}# 回答のガイドライン
 - 議事録の内容に基づいて、正確かつ簡潔に回答してください
 - 情報が議事録に含まれていない場合は、「議事録には記載されていません」と伝えてください
 - タイムスタンプが利用可能な場合は、参照してください
+- 会話履歴がある場合は、過去のやり取りを参考にして一貫性のある回答をしてください
 - 日本語で回答してください`;
 
   // 会話履歴を含むメッセージ配列を構築

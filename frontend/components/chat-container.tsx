@@ -19,7 +19,7 @@ interface ChatContainerProps {
   minutesContext: ChatContext;
 }
 
-const MAX_HISTORY = 3; // 会話履歴の最大件数（Bedrockの応答時間を短縮するため3件に削減）
+const MAX_HISTORY = 1; // 会話履歴の最大件数（Bedrockの応答時間を短縮するため1件に削減）
 
 interface ErrorState {
   type: ErrorType;
@@ -102,7 +102,7 @@ export default function ChatContainer({
 
         setMessages((prev) => {
           const newMessages = [...prev, aiMessage];
-          // 最大3件の会話ペア（6メッセージ）を保持
+          // 最大1件の会話ペア（2メッセージ）を保持
           if (newMessages.length > MAX_HISTORY * 2) {
             return newMessages.slice(-MAX_HISTORY * 2);
           }
