@@ -19,7 +19,7 @@ interface ChatContainerProps {
   minutesContext: ChatContext;
 }
 
-const MAX_HISTORY = 10;
+const MAX_HISTORY = 3; // 会話履歴の最大件数（Bedrockの応答時間を短縮するため3件に削減）
 
 interface ErrorState {
   type: ErrorType;
@@ -62,76 +62,161 @@ export default function ChatContainer({
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
-    try {
-      // 会話履歴を準備（最大10件）
-      const history = messages
-        .slice(-MAX_HISTORY)
-        .map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        }));
+    // リトライロジック（最大3回）
+    let retryCount = 0;
+    const maxRetries = 2; // 初回 + 2回リトライ = 最大3回
 
-      // API呼び出し
-      const response = await apiService.sendChatMessage(
-        jobId,
-        content,
-        minutesContext,
-        history
-      );
+    while (retryCount <= maxRetries) {
+      try {
+        // 会話履歴を準備（最大3件）
+        const history = messages
+          .slice(-MAX_HISTORY)
+          .map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          }));
 
-      // AIメッセージを追加
-      const aiMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: response.message,
-        timestamp: response.timestamp,
-      };
-
-      setMessages((prev) => {
-        const newMessages = [...prev, aiMessage];
-        // 最大10件の会話ペア（20メッセージ）を保持
-        if (newMessages.length > MAX_HISTORY * 2) {
-          return newMessages.slice(-MAX_HISTORY * 2);
+        // 会話履歴が制限を超えた場合、ユーザーに通知
+        if (messages.length > MAX_HISTORY * 2 && retryCount === 0) {
+          toast('古い会話履歴は自動的にクリアされました', {
+            icon: 'ℹ️',
+            duration: 3000,
+          });
         }
-        return newMessages;
-      });
-    } catch (error: unknown) {
-      const err = error as Error & { code?: string };
-      console.error('チャットメッセージの送信に失敗しました:', err);
 
-      // エラータイプを判定
-      let errorType: ErrorType = 'general';
-      let errorMessage = '申し訳ございません。回答の生成に失敗しました。';
+        // API呼び出し
+        const response = await apiService.sendChatMessage(
+          jobId,
+          content,
+          minutesContext,
+          history
+        );
 
-      if (err.message?.includes('timeout') || err.code === 'ECONNABORTED') {
-        errorType = 'timeout';
-        errorMessage = '回答の生成に時間がかかっています。もう一度お試しください。';
-      } else if (
-        err.message?.includes('network') ||
-        err.message?.includes('fetch') ||
-        !navigator.onLine
-      ) {
-        errorType = 'network';
-        errorMessage =
-          'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+        // AIメッセージを追加
+        const aiMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: response.message,
+          timestamp: response.timestamp,
+        };
+
+        setMessages((prev) => {
+          const newMessages = [...prev, aiMessage];
+          // 最大3件の会話ペア（6メッセージ）を保持
+          if (newMessages.length > MAX_HISTORY * 2) {
+            return newMessages.slice(-MAX_HISTORY * 2);
+          }
+          return newMessages;
+        });
+
+        // 成功したらループを抜ける
+        break;
+      } catch (error: unknown) {
+        const err = error as Error & { 
+          code?: string;
+          response?: {
+            data?: {
+              error?: {
+                message?: string;
+                code?: string;
+              };
+            };
+            status?: number;
+          };
+        };
+        
+        // サーバーから返されたエラーメッセージを取得
+        const serverErrorMessage = err.response?.data?.error?.message;
+        const serverErrorCode = err.response?.data?.error?.code;
+        const statusCode = err.response?.status;
+        
+        // デバッグ用にエラー詳細をコンソールに出力
+        console.error('チャットエラー詳細:', {
+          message: err.message,
+          code: err.code,
+          serverMessage: serverErrorMessage,
+          serverCode: serverErrorCode,
+          statusCode: statusCode,
+          fullError: err,
+        });
+        
+        // リトライ可能なエラーかチェック
+        const isRetryable = 
+          err.message?.includes('timeout') ||
+          err.message?.includes('時間がかかっています') ||
+          err.code === 'ECONNABORTED' ||
+          err.message?.includes('Network Error') ||
+          statusCode === 503 || // Service Unavailable
+          statusCode === 504;   // Gateway Timeout
+
+        // 最後のリトライでもエラーの場合、またはリトライ不可能なエラーの場合
+        if (retryCount >= maxRetries || !isRetryable) {
+          console.error('チャットメッセージの送信に失敗しました:', err);
+
+          // エラータイプを判定
+          let errorType: ErrorType = 'general';
+          let errorMessage = '申し訳ございません。回答の生成に失敗しました。';
+
+          // サーバーからのエラーメッセージを優先的に使用
+          if (serverErrorMessage) {
+            errorMessage = serverErrorMessage;
+            
+            // エラーコードに基づいてタイプを判定
+            if (serverErrorCode === 'ValidationError') {
+              errorType = 'general';
+            } else if (serverErrorCode === 'ServiceUnavailableError') {
+              errorType = 'timeout';
+            } else if (serverErrorCode === 'InternalServerError') {
+              errorType = 'general';
+            }
+          } else if (err.message?.includes('timeout') || err.message?.includes('時間がかかっています') || err.code === 'ECONNABORTED') {
+            errorType = 'timeout';
+            errorMessage = 'AIの応答に時間がかかっています。質問を短くするか、もう一度お試しください。';
+          } else if (
+            err.message?.includes('network') ||
+            err.message?.includes('Network Error') ||
+            err.message?.includes('fetch') ||
+            !navigator.onLine
+          ) {
+            errorType = 'network';
+            errorMessage =
+              'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+          } else if (statusCode === 400) {
+            errorType = 'general';
+            errorMessage = serverErrorMessage || 'リクエストが不正です。入力内容を確認してください。';
+          } else if (statusCode === 500) {
+            errorType = 'general';
+            errorMessage = serverErrorMessage || 'サーバーエラーが発生しました。しばらくしてから再度お試しください。';
+          }
+
+          // エラー状態を設定
+          setError({
+            type: errorType,
+            message: errorMessage,
+            lastUserMessage: content,
+          });
+
+          toast.error(errorMessage);
+          break;
+        }
+
+        // リトライする場合
+        retryCount++;
+        console.log(`リトライ中... (${retryCount}/${maxRetries})`);
+        
+        // 指数バックオフ（1秒、2秒、4秒...）
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 1000));
       }
-
-      // エラー状態を設定
-      setError({
-        type: errorType,
-        message: errorMessage,
-        lastUserMessage: content,
-      });
-
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   // エラーからの再試行
   const handleRetry = () => {
     if (error?.lastUserMessage) {
+      // エラー状態をクリアしてから再試行
+      setError(null);
       handleSendMessage(error.lastUserMessage);
     }
   };
@@ -140,6 +225,7 @@ export default function ChatContainer({
   const handleClearHistory = () => {
     if (window.confirm('会話履歴をクリアしますか？')) {
       setMessages([]);
+      setError(null); // エラーもクリア
       toast.success('会話履歴をクリアしました');
     }
   };

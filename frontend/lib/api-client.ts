@@ -4,7 +4,7 @@ import { getAuthHeader } from './auth';
 // APIクライアントのインスタンスを作成
 const apiClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 30000,
+  timeout: 60000, // 60秒に延長（チャット機能のため）
   headers: {
     'Content-Type': 'application/json',
   },
@@ -34,10 +34,23 @@ apiClient.interceptors.response.use(
     // エラーハンドリング
     if (error.response) {
       // サーバーからのエラーレスポンス
-      console.error('API Error:', error.response.data);
+      console.error('API Error:', {
+        status: error.response.status,
+        data: error.response.data,
+        url: error.config?.url,
+      });
+      
+      // エラーメッセージをより詳細に
+      if (error.response.data?.error?.message) {
+        error.message = error.response.data.error.message;
+      }
     } else if (error.request) {
       // リクエストは送信されたがレスポンスがない
-      console.error('Network Error:', error.request);
+      console.error('Network Error:', {
+        message: error.message,
+        code: error.code,
+        url: error.config?.url,
+      });
     } else {
       // その他のエラー
       console.error('Error:', error.message);

@@ -595,6 +595,7 @@ export class ComputeStack extends cdk.Stack {
       'POST',
       new apigateway.LambdaIntegration(this.chatHandler, {
         proxy: true,
+        timeout: cdk.Duration.seconds(60), // API Gatewayの統合タイムアウトを60秒に設定（Service Quotasで承認済み）
       }),
       {
         authorizer: authorizer,

@@ -15,9 +15,9 @@ const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || 'apac.anthropic.claude-
 
 // 定数
 const MAX_MESSAGE_LENGTH = 1000; // 質問の最大文字数
-const MAX_CONTEXT_SIZE = 50000; // コンテキストの最大文字数
-const MAX_HISTORY_LENGTH = 10; // 会話履歴の最大件数
-const TRANSCRIPT_LIMIT = 5000; // 文字起こし全文の最大文字数
+const MAX_CONTEXT_SIZE = 100000; // コンテキストの最大文字数（文字起こし全文を含めるため100,000文字に拡大）
+const MAX_HISTORY_LENGTH = 3; // 会話履歴の最大件数（Bedrockの応答時間を短縮するため3件に削減）
+const BEDROCK_TIMEOUT_MS = 55000; // Bedrockのタイムアウト（55秒）- API Gatewayの60秒タイムアウトを考慮
 
 // クライアントの初期化
 let bedrockClient: BedrockClient;
@@ -111,11 +111,23 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     requestLogger.info('プロンプトを構築', {
       systemPromptLength: systemPrompt.length,
       messagesCount: messages.length,
+      contextSummaryLength: request.context.summary.length,
+      decisionsCount: request.context.decisions.length,
+      nextActionsCount: request.context.nextActions.length,
+      transcriptLength: request.context.transcript.length,
     });
+
+    // デバッグ用: プロンプトの一部を出力（開発環境のみ）
+    if (process.env.ENVIRONMENT === 'dev') {
+      requestLogger.info('プロンプト内容（抜粋）', {
+        systemPromptPreview: systemPrompt.substring(0, 500),
+        userMessage: messages[messages.length - 1]?.content,
+      });
+    }
 
     // 3. Bedrockを呼び出して回答を生成（タイムアウト付き）
     const bedrockStartTime = Date.now();
-    const response = await invokeBedrockWithTimeout(systemPrompt, messages, 30000); // 30秒タイムアウト
+    const response = await invokeBedrockWithTimeout(systemPrompt, messages, BEDROCK_TIMEOUT_MS);
     
     requestLogger.logDuration('Bedrock呼び出し完了', bedrockStartTime);
 
@@ -244,7 +256,7 @@ function validateRequest(request: ChatRequest): void {
     }
 
     if (request.history.length > MAX_HISTORY_LENGTH) {
-      throw new ValidationError(`会話履歴は${MAX_HISTORY_LENGTH}件以内にしてください`);
+      throw new ValidationError(`会話履歴は${MAX_HISTORY_LENGTH}件以内にしてください（長い会話は応答時間が長くなります）`);
     }
 
     for (const item of request.history) {
@@ -298,10 +310,8 @@ function buildPromptWithHistory(request: ChatRequest): {
         .join('\n')
     : 'なし';
 
-  // 文字起こし全文を制限
-  const limitedTranscript = request.context.transcript.length > TRANSCRIPT_LIMIT
-    ? request.context.transcript.substring(0, TRANSCRIPT_LIMIT) + '\n\n（以下省略）'
-    : request.context.transcript;
+  // 文字起こし全文（制限なし）
+  const limitedTranscript = request.context.transcript;
 
   // システムプロンプト
   const systemPrompt = `あなたは議事録アシスタントです。
@@ -393,7 +403,7 @@ async function invokeBedrockWithTimeout(
     invokeBedrock(systemPrompt, messages),
     new Promise<string>((_, reject) =>
       setTimeout(
-        () => reject(new InternalServerError('回答の生成に時間がかかっています。もう一度お試しください。')),
+        () => reject(new InternalServerError('AIの応答に時間がかかっています。質問を短くするか、もう一度お試しください。')),
         timeoutMs
       )
     ),
