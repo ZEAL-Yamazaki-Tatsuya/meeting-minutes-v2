@@ -15,7 +15,7 @@ MP4形式の会議録画ファイルから、AWS Transcribe（音声文字起こ
 - **[モニタリング](docs/MONITORING.md)** - CloudWatchとX-Rayの設定
 
 ### デプロイ関連
-- **[Amplifyデプロイ](docs/AMPLIFY_DEPLOYMENT.md)** - フロントエンドのデプロイ方法
+- **[Amplifyデプロイ](docs/AMPLIFY_DEPLOYMENT.md)** - フロントエンドのデプロイ方法（AWS Amplify Hosting）
 - **[GitHub連携](docs/GITHUB_AMPLIFY_SETUP.md)** - CI/CDの設定
 - **[デプロイメントパイプライン](docs/DEPLOYMENT_PIPELINE.md)** - CI/CDパイプラインの詳細
 - **[次のステップガイド](docs/NEXT_STEPS.md)** - 本番環境への移行と運用開始
@@ -78,6 +78,7 @@ https://main.d1iv2q5yh6oc7s.amplifyapp.com
 - **Axios** - HTTPクライアント
 - **React Hot Toast** - 通知表示
 - **React Markdown** - マークダウンレンダリング
+- **AWS Amplify Hosting** - フロントエンドホスティング
 
 ### バックエンド
 - **AWS Lambda**: 各種処理を実行するサーバーレス関数
@@ -256,6 +257,14 @@ npm run dev
 
 ## デプロイされるAWSリソース
 
+### フロントエンドスタック (`meeting-minutes-generator-frontend-dev`)
+
+- **AWS Amplify Hosting**:
+  - Next.js 14アプリケーションの自動ビルド・デプロイ
+  - GitHub連携による自動デプロイ
+  - 環境変数管理
+  - カスタムドメイン対応（オプション）
+
 ### ストレージスタック (`meeting-minutes-generator-storage-dev`)
 
 - **S3バケット（入力用）**: 
@@ -275,7 +284,7 @@ npm run dev
 
 ### コンピュートスタック (`meeting-minutes-generator-compute-dev`)
 
-- **Lambda関数（12個）**:
+- **Lambda関数（14個）**:
   - Upload Handler: Presigned URL生成
   - Start Processing: Step Functions起動
   - Transcribe Trigger: Transcribeジョブ開始
@@ -284,10 +293,12 @@ npm run dev
   - Get Job Status: ジョブステータス取得
   - List Jobs: ジョブ一覧取得
   - Get Minutes: 議事録取得
+  - List Minutes: 議事録一覧取得
   - Download Minutes: ダウンロードURL生成
   - Update Minutes: 議事録更新（トピック編集）
   - Search Minutes: AI検索（Bedrock）
   - Chat Handler: チャットQ&A（Bedrock）
+  - S3 Upload Trigger: S3アップロードイベント処理
 
 - **Step Functions ステートマシン**:
   - 文字起こしから議事録生成までのワークフロー

@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv';
 import { StorageStack } from '../lib/storage-stack';
 import { ComputeStack } from '../lib/compute-stack';
 import { AuthStack } from '../lib/auth-stack';
-import { FrontendStack } from '../lib/frontend-stack';
 import { AmplifyFrontendStack } from '../lib/amplify-frontend-stack';
 import { MonitoringStack } from '../lib/monitoring-stack';
 
@@ -22,7 +21,6 @@ const env = {
 
 const environment = process.env.ENVIRONMENT || 'dev';
 const appName = process.env.APP_NAME || 'meeting-minutes-generator';
-const useAmplify = process.env.USE_AMPLIFY === 'true';
 
 // Create stacks
 const storageStack = new StorageStack(app, `${appName}-storage-${environment}`, {
@@ -75,37 +73,22 @@ const monitoringStack = new MonitoringStack(app, `${appName}-monitoring-${enviro
 
 monitoringStack.addDependency(computeStack);
 
-// フロントエンドスタック（Amplify または CloudFront + S3）
-if (useAmplify) {
-  // AWS Amplify Hostingを使用
-  const amplifyStack = new AmplifyFrontendStack(app, `${appName}-amplify-${environment}`, {
-    env,
-    environment,
-    appName,
-    apiUrl: computeStack.apiUrl,
-    cognitoUserPoolId: authStack.userPool.userPoolId,
-    cognitoClientId: authStack.userPoolClient.userPoolClientId,
-    githubRepo: process.env.GITHUB_REPO,
-    githubBranch: process.env.GITHUB_BRANCH || 'main',
-    githubToken: process.env.GITHUB_TOKEN,
-    description: 'Frontend hosting resources for Meeting Minutes Generator (Amplify)',
-  });
+// フロントエンドスタック（AWS Amplify Hosting）
+const amplifyStack = new AmplifyFrontendStack(app, `${appName}-amplify-${environment}`, {
+  env,
+  environment,
+  appName,
+  apiUrl: computeStack.apiUrl,
+  cognitoUserPoolId: authStack.userPool.userPoolId,
+  cognitoClientId: authStack.userPoolClient.userPoolClientId,
+  githubRepo: process.env.GITHUB_REPO,
+  githubBranch: process.env.GITHUB_BRANCH || 'main',
+  githubToken: process.env.GITHUB_TOKEN,
+  description: 'Frontend hosting resources for Meeting Minutes Generator (Amplify)',
+});
 
-  amplifyStack.addDependency(computeStack);
-  amplifyStack.addDependency(authStack);
-} else {
-  // CloudFront + S3を使用（静的エクスポート）
-  const frontendStack = new FrontendStack(app, `${appName}-frontend-${environment}`, {
-    env,
-    environment,
-    appName,
-    apiUrl: computeStack.apiUrl,
-    description: 'Frontend hosting resources for Meeting Minutes Generator (CloudFront, S3)',
-  });
-
-  frontendStack.addDependency(computeStack);
-  frontendStack.addDependency(authStack);
-}
+amplifyStack.addDependency(computeStack);
+amplifyStack.addDependency(authStack);
 
 // Add tags to all resources for cost tracking and management
 cdk.Tags.of(app).add('Application', 'meeting-minutes-generator');
