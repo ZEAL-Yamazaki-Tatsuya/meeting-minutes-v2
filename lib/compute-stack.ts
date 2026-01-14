@@ -74,6 +74,7 @@ export class ComputeStack extends cdk.Stack {
           'transcribe:StartTranscriptionJob',
           'transcribe:GetTranscriptionJob',
           'transcribe:ListTranscriptionJobs',
+          'transcribe:TagResource',
         ],
         resources: ['*'],
       })
@@ -138,6 +139,7 @@ export class ComputeStack extends cdk.Stack {
 
     // Lambda環境変数の共通設定（STATE_MACHINE_ARNは後で追加）
     const lambdaEnvironment = {
+      APP_NAME: appName,
       ENVIRONMENT: environment,
       INPUT_BUCKET_NAME: inputBucket.bucketName,
       OUTPUT_BUCKET_NAME: outputBucket.bucketName,

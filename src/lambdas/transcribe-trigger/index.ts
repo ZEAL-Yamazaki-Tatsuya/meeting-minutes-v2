@@ -22,6 +22,8 @@ const INPUT_BUCKET_NAME = process.env.INPUT_BUCKET_NAME!;
 const OUTPUT_BUCKET_NAME = process.env.OUTPUT_BUCKET_NAME!;
 const JOBS_TABLE_NAME = process.env.JOBS_TABLE_NAME!;
 const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-1';
+const APP_NAME = process.env.APP_NAME || 'meeting-minutes-generator';
+const ENVIRONMENT = process.env.ENVIRONMENT || 'dev';
 
 // クライアントの初期化
 const transcribeClient = new TranscribeClient({ region: AWS_REGION });
@@ -107,7 +109,7 @@ async function startTranscriptionJob(
       transcribeJobName,
     });
 
-    // Transcribeジョブを開始
+    // Transcribeジョブを開始（タグ付き）
     const command = new StartTranscriptionJobCommand({
       TranscriptionJobName: transcribeJobName,
       LanguageCode: (input.languageCode as LanguageCode) || LanguageCode.JA_JP,
@@ -121,6 +123,14 @@ async function startTranscriptionJob(
         ShowSpeakerLabels: true,
         MaxSpeakerLabels: input.maxSpeakerLabels || 10,
       },
+      // コスト追跡用のタグを付与
+      Tags: [
+        { Key: 'Application', Value: APP_NAME },
+        { Key: 'Environment', Value: ENVIRONMENT },
+        { Key: 'JobId', Value: input.jobId },
+        { Key: 'UserId', Value: input.userId },
+        { Key: 'ManagedBy', Value: 'CDK' },
+      ],
     });
 
     const response = await transcribeClient.send(command);

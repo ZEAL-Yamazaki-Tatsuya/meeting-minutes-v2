@@ -1,0 +1,30 @@
+{
+  "enabled": true,
+  "name": "ソースコード変更時にドキュメント更新",
+  "description": "TypeScriptおよびJavaScriptのソースファイル、設定ファイル、テストファイルが変更されたときに、READMEまたは/docsフォルダのドキュメントを更新します。",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "frontend/**/*.tsx",
+      "frontend/**/*.ts",
+      "lib/**/*.ts",
+      "scripts/**/*.ts",
+      "test/**/*.ts",
+      "*.ts",
+      "*.tsx",
+      "package.json",
+      "tsconfig.json",
+      "jest.config.js",
+      "cdk.json",
+      "frontend/next.config.mjs",
+      "frontend/tailwind.config.ts",
+      "frontend/playwright.config.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "ソースコードが変更されました。変更内容に基づいて、README.mdまたは/docsフォルダ内の関連ドキュメントを更新してください。変更の概要、影響を受ける機能、セットアップ手順の変更があれば、それらを反映させてください。"
+  }
+}

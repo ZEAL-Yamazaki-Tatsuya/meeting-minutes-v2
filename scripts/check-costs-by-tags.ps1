@@ -13,16 +13,10 @@ Write-Host ""
 # Total cost for this application
 Write-Host "Total Cost (Application: meeting-minutes-generator):" -ForegroundColor Green
 
-$filter = @"
-{
-  "Tags": {
-    "Key": "Application",
-    "Values": ["meeting-minutes-generator"]
-  }
-}
-"@
+$filter = '{"Tags":{"Key":"Application","Values":["meeting-minutes-generator"]}}'
 
-$filter | Out-File -FilePath "temp-filter.json" -Encoding UTF8
+# Write filter to temp file without BOM
+[System.IO.File]::WriteAllText("$PWD\temp-filter.json", $filter, [System.Text.UTF8Encoding]::new($false))
 
 aws ce get-cost-and-usage `
     --time-period Start=$startDate,End=$endDate `
@@ -38,26 +32,11 @@ Write-Host ""
 # Cost by Stack (Storage, Auth, Compute, Frontend)
 Write-Host "Cost by Stack:" -ForegroundColor Green
 
-$filter2 = @"
-{
-  "And": [
-    {
-      "Tags": {
-        "Key": "Application",
-        "Values": ["meeting-minutes-generator"]
-      }
-    }
-  ]
-}
-"@
-
-$filter2 | Out-File -FilePath "temp-filter2.json" -Encoding UTF8
-
 aws ce get-cost-and-usage `
     --time-period Start=$startDate,End=$endDate `
     --granularity MONTHLY `
     --metrics "UnblendedCost" `
-    --filter file://temp-filter2.json `
+    --filter file://temp-filter.json `
     --group-by Type=TAG,Key=Stack `
     --region us-east-1 `
     --query "ResultsByTime[0].Groups[*].[Keys[0], Metrics.UnblendedCost.Amount]" `
@@ -72,7 +51,7 @@ aws ce get-cost-and-usage `
     --time-period Start=$startDate,End=$endDate `
     --granularity MONTHLY `
     --metrics "UnblendedCost" `
-    --filter file://temp-filter2.json `
+    --filter file://temp-filter.json `
     --group-by Type=TAG,Key=Environment `
     --region us-east-1 `
     --query "ResultsByTime[0].Groups[*].[Keys[0], Metrics.UnblendedCost.Amount]" `
@@ -82,7 +61,6 @@ Write-Host ""
 
 # Cleanup
 Remove-Item "temp-filter.json" -ErrorAction SilentlyContinue
-Remove-Item "temp-filter2.json" -ErrorAction SilentlyContinue
 
 Write-Host "Note: Tag-based cost allocation may take 24-48 hours to appear" -ForegroundColor Yellow
 Write-Host ""

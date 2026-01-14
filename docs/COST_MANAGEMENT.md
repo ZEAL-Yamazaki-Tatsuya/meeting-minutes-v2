@@ -1,58 +1,58 @@
-# Cost Management Guide
+# コスト管理ガイド
 
-## Overview
+## 概要
 
-This document explains how to monitor and manage costs for the Meeting Minutes Generator application.
+このドキュメントでは、Meeting Minutes Generatorアプリケーションのコストを監視・管理する方法を説明します。
 
-## Resource Tagging Strategy
+## リソースタグ付け戦略
 
-All AWS resources are tagged with the following tags for cost tracking:
+すべてのAWSリソースには、コスト追跡のために以下のタグが付与されています：
 
-### Global Tags (Applied to all resources)
+### グローバルタグ（すべてのリソースに適用）
 - **Application**: `meeting-minutes-generator`
 - **Environment**: `dev` / `prod`
 - **ManagedBy**: `CDK`
 - **Project**: `meeting-minutes-generator`
 - **CostCenter**: `Development`
-- **Owner**: Email address from `OWNER_EMAIL` env variable
+- **Owner**: `OWNER_EMAIL`環境変数から取得
 
-### Stack-Specific Tags
+### スタック固有のタグ
 - **Stack**: `Storage` / `Auth` / `Compute` / `Frontend`
 - **Component**: `Backend` / `Frontend` / `Security`
-- **Service**: Service name (e.g., `Amplify`, `Lambda`, `S3`)
+- **Service**: サービス名（例：`Amplify`、`Lambda`、`S3`）
 
-## Cost Monitoring
+## コスト監視
 
-### 1. Quick Cost Check
+### 1. クイックコストチェック
 
-Check current month's costs:
+当月のコストを確認：
 
 ```powershell
 .\scripts\check-costs.ps1
 ```
 
-### 2. Cost by Tags
+### 2. タグ別コスト確認
 
-Check costs filtered by application tags:
+アプリケーションタグでフィルタリングしたコストを確認：
 
 ```powershell
 .\scripts\check-costs-by-tags.ps1
 ```
 
-### 3. All Services Report
+### 3. 全サービスレポート
 
-View detailed breakdown of all services:
+すべてのサービスの詳細な内訳を表示：
 
 ```powershell
 .\scripts\check-all-services.ps1
 ```
 
-## Enable Cost Allocation Tags
+## コスト配分タグの有効化
 
-To use tag-based cost filtering, you must activate Cost Allocation Tags:
+タグベースのコストフィルタリングを使用するには、コスト配分タグを有効化する必要があります：
 
-1. Go to [AWS Billing - Cost Allocation Tags](https://console.aws.amazon.com/billing/home#/tags)
-2. Activate these tags:
+1. [AWS Billing - コスト配分タグ](https://console.aws.amazon.com/billing/home#/tags)にアクセス
+2. 以下のタグを有効化：
    - `Application`
    - `Environment`
    - `Stack`
@@ -60,134 +60,134 @@ To use tag-based cost filtering, you must activate Cost Allocation Tags:
    - `Project`
    - `CostCenter`
    - `Owner`
-3. Wait 24 hours for cost data to appear
+3. コストデータが表示されるまで24時間待機
 
-## Set Up Budget Alerts
+## 予算アラートの設定
 
-Create a monthly budget with email notifications:
+メール通知付きの月間予算を作成：
 
 ```powershell
 .\scripts\setup-budget-alert.ps1 -MonthlyBudget 10 -EmailAddress "your-email@example.com"
 ```
 
-This will send notifications when:
-- Actual cost exceeds 80% of budget
-- Forecasted cost exceeds 100% of budget
+以下の場合に通知が送信されます：
+- 実際のコストが予算の80%を超える
+- 予測コストが予算の100%を超える
 
 ## Cost Explorer
 
-For detailed analysis, use AWS Cost Explorer:
+詳細な分析にはAWS Cost Explorerを使用：
 - URL: https://console.aws.amazon.com/cost-management/home#/cost-explorer
 
-### Recommended Filters
-- **Service**: Filter by specific AWS services
-- **Tag**: Filter by Application, Environment, Stack
-- **Time Range**: Daily, Monthly, Custom
+### 推奨フィルター
+- **Service**: 特定のAWSサービスでフィルタ
+- **Tag**: Application、Environment、Stackでフィルタ
+- **Time Range**: 日次、月次、カスタム
 
-### Useful Reports
-1. **Cost by Service**: Identify which services cost the most
-2. **Cost by Tag**: Track costs by Stack or Environment
-3. **Daily Costs**: Monitor spending trends
-4. **Forecast**: Predict end-of-month costs
+### 有用なレポート
+1. **Cost by Service**: コストが最も高いサービスを特定
+2. **Cost by Tag**: スタックまたは環境別にコストを追跡
+3. **Daily Costs**: 支出トレンドを監視
+4. **Forecast**: 月末のコストを予測
 
-## Expected Costs
+## 予想コスト
 
-### Free Tier Services (First 12 months)
-- **Lambda**: 1M requests/month, 400,000 GB-seconds
-- **API Gateway**: 1M requests/month
-- **S3**: 5GB storage, 20,000 GET requests, 2,000 PUT requests
-- **DynamoDB**: 25GB storage, 25 read/write capacity units
-- **Cognito**: 50,000 MAU (Monthly Active Users)
-- **Amplify**: 1,000 build minutes, 5GB storage
+### 無料枠サービス（最初の12ヶ月）
+- **Lambda**: 月間100万リクエスト、400,000 GB秒
+- **API Gateway**: 月間100万リクエスト
+- **S3**: 5GBストレージ、20,000 GETリクエスト、2,000 PUTリクエスト
+- **DynamoDB**: 25GBストレージ、25読み書き容量ユニット
+- **Cognito**: 50,000 MAU（月間アクティブユーザー）
+- **Amplify**: 1,000ビルド分、5GBストレージ
 
-### Always Free Services
-- **Lambda**: 1M requests/month, 400,000 GB-seconds
-- **DynamoDB**: 25GB storage, 25 read/write capacity units
+### 常に無料のサービス
+- **Lambda**: 月間100万リクエスト、400,000 GB秒
+- **DynamoDB**: 25GBストレージ、25読み書き容量ユニット
 - **Cognito**: 50,000 MAU
-- **Step Functions**: 4,000 state transitions/month
+- **Step Functions**: 月間4,000ステート遷移
 
-### Pay-As-You-Go Services (No Free Tier)
+### 従量課金サービス（無料枠なし）
 
-#### Amazon Bedrock (Claude 3.5 Sonnet v2)
-- **Input**: $3.00 per 1M tokens
-- **Output**: $15.00 per 1M tokens
-- **Example**: 10-minute meeting (~3,000 tokens) = $0.05-0.10
+#### Amazon Bedrock（Claude 3.5 Sonnet v2）
+- **入力**: 100万トークンあたり$3.00
+- **出力**: 100万トークンあたり$15.00
+- **例**: 10分の会議（約3,000トークン）= $0.05～0.10
 
 #### Amazon Transcribe
-- **Standard**: $0.024 per minute (after 60 free minutes/month for first 12 months)
-- **Example**: 1-hour meeting = $1.44
+- **標準**: 1分あたり$0.024（最初の12ヶ月は月間60分無料）
+- **例**: 1時間の会議 = $1.44
 
-## Cost Optimization Tips
+## コスト最適化のヒント
 
-### 1. Use Lifecycle Policies
-- Input videos are automatically deleted after 7 days
-- Output documents are automatically deleted after 90 days
+### 1. ライフサイクルポリシーの使用
+- 入力ビデオは7日後に自動削除
+- 出力ドキュメントは90日後に自動削除
 
-### 2. Monitor Bedrock Usage
-Bedrock is the most expensive service. To reduce costs:
-- Use shorter prompts
-- Optimize the minutes generation prompt
-- Consider using a smaller model for testing
+### 2. Bedrockの使用状況を監視
+Bedrockが最も高額なサービスです。コストを削減するには：
+- より短いプロンプトを使用
+- 議事録生成プロンプトを最適化
+- テスト用に小さいモデルの使用を検討
 
-### 3. Clean Up Unused Resources
-Regularly check for:
-- Old S3 objects
-- Unused DynamoDB items
-- Failed transcription jobs
+### 3. 未使用リソースのクリーンアップ
+定期的に以下を確認：
+- 古いS3オブジェクト
+- 未使用のDynamoDBアイテム
+- 失敗した文字起こしジョブ
 
-### 4. Use Development Environment Wisely
-- Delete dev resources when not in use
-- Use smaller test files during development
-- Limit the number of test runs
+### 4. 開発環境を賢く使用
+- 使用していない場合は開発リソースを削除
+- 開発中は小さいテストファイルを使用
+- テスト実行の回数を制限
 
-## Cost Breakdown by Service
+## サービス別コスト内訳
 
-### High Cost Services (Pay attention to these)
-1. **Amazon Bedrock**: $3-15 per 1M tokens
-2. **Amazon Transcribe**: $0.024 per minute
+### 高コストサービス（注意が必要）
+1. **Amazon Bedrock**: 100万トークンあたり$3～15
+2. **Amazon Transcribe**: 1分あたり$0.024
 
-### Medium Cost Services
-3. **AWS Amplify**: Build minutes and bandwidth
-4. **Amazon S3**: Storage and data transfer
-5. **AWS Lambda**: Execution time beyond free tier
+### 中程度のコストサービス
+3. **AWS Amplify**: ビルド分とバンド幅
+4. **Amazon S3**: ストレージとデータ転送
+5. **AWS Lambda**: 無料枠を超える実行時間
 
-### Low/No Cost Services
-6. **Amazon DynamoDB**: Usually within free tier
-7. **Amazon API Gateway**: Usually within free tier
-8. **Amazon Cognito**: Usually within free tier
-9. **AWS Step Functions**: Usually within free tier
-10. **Amazon CloudWatch**: Logs and metrics
+### 低コスト/無料サービス
+6. **Amazon DynamoDB**: 通常は無料枠内
+7. **Amazon API Gateway**: 通常は無料枠内
+8. **Amazon Cognito**: 通常は無料枠内
+9. **AWS Step Functions**: 通常は無料枠内
+10. **Amazon CloudWatch**: ログとメトリクス
 
-## Monitoring Best Practices
+## 監視のベストプラクティス
 
-1. **Check costs weekly**: Run `.\scripts\check-costs.ps1` every week
-2. **Set up budget alerts**: Get notified before overspending
-3. **Review Cost Explorer monthly**: Identify trends and anomalies
-4. **Tag all resources**: Ensure proper cost allocation
-5. **Clean up regularly**: Delete unused resources
+1. **週次でコストを確認**: 毎週`.\scripts\check-costs.ps1`を実行
+2. **予算アラートを設定**: 過支出前に通知を受け取る
+3. **月次でCost Explorerをレビュー**: トレンドと異常を特定
+4. **すべてのリソースにタグを付与**: 適切なコスト配分を確保
+5. **定期的にクリーンアップ**: 未使用リソースを削除
 
-## Troubleshooting
+## トラブルシューティング
 
-### Tags not showing in Cost Explorer
-- Wait 24-48 hours after activating Cost Allocation Tags
-- Ensure tags are properly applied to resources
-- Check that resources were created after tag activation
+### Cost Explorerにタグが表示されない
+- コスト配分タグを有効化してから24～48時間待機
+- タグがリソースに正しく適用されているか確認
+- タグ有効化後に作成されたリソースか確認
 
-### Costs higher than expected
-1. Check Bedrock usage (most expensive)
-2. Check Transcribe usage
-3. Review S3 storage and data transfer
-4. Check for failed jobs that retry multiple times
+### 予想より高いコスト
+1. Bedrock使用状況を確認（最も高額）
+2. Transcribe使用状況を確認
+3. S3ストレージとデータ転送を確認
+4. 複数回リトライされた失敗ジョブを確認
 
-### No cost data available
-- Cost data has a 24-hour delay
-- Ensure you're looking at the correct time period
-- Check that resources are actually being used
+### コストデータが利用できない
+- コストデータは24時間の遅延があります
+- 正しい期間を確認しているか確認
+- リソースが実際に使用されているか確認
 
-## Additional Resources
+## 参考リンク
 
 - [AWS Cost Management](https://aws.amazon.com/aws-cost-management/)
-- [AWS Free Tier](https://aws.amazon.com/free/)
-- [AWS Pricing Calculator](https://calculator.aws/)
-- [Bedrock Pricing](https://aws.amazon.com/bedrock/pricing/)
-- [Transcribe Pricing](https://aws.amazon.com/transcribe/pricing/)
+- [AWS 無料利用枠](https://aws.amazon.com/free/)
+- [AWS 料金計算ツール](https://calculator.aws/)
+- [Bedrock 料金](https://aws.amazon.com/bedrock/pricing/)
+- [Transcribe 料金](https://aws.amazon.com/transcribe/pricing/)

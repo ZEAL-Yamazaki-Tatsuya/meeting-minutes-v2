@@ -94,6 +94,16 @@ applications:
       
       // 自動ブランチ作成を無効化
       enableBranchAutoDeletion: false,
+      
+      // タグを付与
+      tags: [
+        { key: 'Application', value: appName },
+        { key: 'Environment', value: environment },
+        { key: 'Stack', value: 'Frontend' },
+        { key: 'Component', value: 'Frontend' },
+        { key: 'Service', value: 'Amplify' },
+        { key: 'ManagedBy', value: 'CDK' },
+      ],
     });
 
     // GitHubリポジトリが指定されている場合
