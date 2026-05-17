@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
 import apiService from '@/lib/api-service';
-import { Minutes, Decision, NextAction, Topic } from '@/types';
+import { Minutes, Decision, NextAction, Topic, AgendaItem } from '@/types';
 import ProtectedRoute from '@/components/protected-route';
 import TopicList from '@/components/topic-list';
 import TopicEditor from '@/components/topic-editor';
@@ -447,44 +447,104 @@ function MinutesPageContent() {
             <>
               {/* 概要セクション */}
               <SectionCard title="概要" icon="📋">
-                {/* 全体概要 */}
-                <div className="mb-6">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 sm:mb-3">
-                    全体概要
-                  </h3>
-                  {isEditing ? (
-                    <textarea
-                      value={editedSummary}
-                      onChange={(e) => setEditedSummary(e.target.value)}
-                      className="w-full min-h-[120px] sm:min-h-[150px] p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                      placeholder="会議の概要を入力してください..."
-                    />
-                  ) : (
-                    <div className="prose prose-sm sm:prose max-w-none">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {minutes.summary}
-                      </ReactMarkdown>
-                    </div>
-                  )}
-                </div>
-
-                {/* トピック別詳細 */}
-                {(isEditing || (minutes.topics && minutes.topics.length > 0)) && (
-                  <div>
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
-                      トピック別詳細
-                    </h3>
-                    {isEditing ? (
-                      <TopicEditor
-                        topics={editedTopics}
-                        onUpdate={setEditedTopics}
-                      />
-                    ) : (
-                      <TopicList topics={minutes.topics || []} />
-                    )}
+                {isEditing ? (
+                  <textarea
+                    value={editedSummary}
+                    onChange={(e) => setEditedSummary(e.target.value)}
+                    className="w-full min-h-[120px] sm:min-h-[150px] p-3 sm:p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                    placeholder="会議の概要を入力してください..."
+                  />
+                ) : (
+                  <div className="prose prose-sm sm:prose max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {minutes.summary}
+                    </ReactMarkdown>
                   </div>
                 )}
               </SectionCard>
+
+              {/* 議事内容（論点ごと）セクション */}
+              {!isEditing && minutes.agendaItems && minutes.agendaItems.length > 0 && (
+                <SectionCard title="議事内容" icon="💬">
+                  <div className="space-y-6">
+                    {minutes.agendaItems.map((item, index) => (
+                      <div key={item.id} className="border-l-4 border-indigo-400 pl-4 sm:pl-6">
+                        {/* 論点 */}
+                        <h3 className="text-base sm:text-lg font-bold text-indigo-800 mb-3">
+                          論点{index + 1}：{item.issue}
+                        </h3>
+
+                        {/* 内容 */}
+                        <div className="mb-3">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">【内容】</h4>
+                          <div className="space-y-1 pl-2">
+                            {item.discussion.map((entry, dIdx) => (
+                              <p key={dIdx} className="text-sm sm:text-base text-gray-700">
+                                <span className="font-medium">{entry.speaker}：</span>
+                                {entry.content}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 結論 */}
+                        <div className="mb-3">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-1">【結論】</h4>
+                          <p className="text-sm sm:text-base text-gray-800 pl-2 font-medium bg-green-50 p-2 rounded">
+                            {item.conclusion}
+                          </p>
+                        </div>
+
+                        {/* ネクスト論点 */}
+                        {item.nextIssues && item.nextIssues.length > 0 && (
+                          <div className="mb-3">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-1">【ネクスト論点】</h4>
+                            <ul className="list-disc list-inside pl-2 space-y-1">
+                              {item.nextIssues.map((issue, iIdx) => (
+                                <li key={iIdx} className="text-sm sm:text-base text-gray-700">
+                                  {issue}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* ネクストアクション */}
+                        {item.nextActions && item.nextActions.length > 0 && (
+                          <div className="mb-2">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-1">【ネクストアクション】</h4>
+                            <ul className="list-none pl-2 space-y-1">
+                              {item.nextActions.map((action, aIdx) => (
+                                <li key={aIdx} className="text-sm sm:text-base text-gray-700">
+                                  <span className="font-medium">{action.assignee}：</span>
+                                  {action.action}
+                                  {action.dueDate && (
+                                    <span className="text-orange-600 font-medium">
+                                      （期限：{action.dueDate}）
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* 区切り線（最後の項目以外） */}
+                        {index < minutes.agendaItems!.length - 1 && (
+                          <hr className="mt-4 border-gray-200" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* トピック別詳細（後方互換性：agendaItemsがない場合のみ表示） */}
+              {!isEditing && (!minutes.agendaItems || minutes.agendaItems.length === 0) && minutes.topics && minutes.topics.length > 0 && (
+                <SectionCard title="トピック別詳細" icon="📋">
+                  <TopicList topics={minutes.topics || []} />
+                </SectionCard>
+              )}
 
               {/* 決定事項セクション */}
               <SectionCard title="決定事項" icon="✅">

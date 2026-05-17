@@ -163,8 +163,30 @@ src/models/
 | モデル | 説明 | 主要フィールド |
 |-------|------|--------------|
 | **MeetingJob** | ジョブ情報 | jobId, userId, status, videoFileName, createdAt, updatedAt |
-| **Minutes** | 議事録 | jobId, summary, topics, decisions, nextActions, metadata |
+| **Minutes** | 議事録 | jobId, summary, agendaItems, topics(後方互換), decisions(後方互換), nextActions(後方互換) |
+| **AgendaItem** | 論点ごとの議事録 | issue, discussion[], conclusion, nextIssues[], nextActions[] |
+| **DiscussionEntry** | 議論内容の各発言 | speaker, content |
+| **AgendaNextAction** | 論点ごとのネクストアクション | assignee, action, dueDate |
 | **Transcript** | 文字起こし結果 | jobId, speakers, segments, fullText, confidence |
+
+**議事録の出力構造（論点ベース）**:
+
+```json
+{
+  "summary": "会議の概要",
+  "agendaItems": [
+    {
+      "issue": "論点（議題）",
+      "discussion": [{"speaker": "発言者", "content": "発言内容"}],
+      "conclusion": "結論",
+      "nextIssues": ["派生した次の論点"],
+      "nextActions": [{"assignee": "担当者", "action": "アクション", "dueDate": "期限"}]
+    }
+  ],
+  "decisions": [{"description": "決定内容", "timestamp": "HH:MM:SS"}],
+  "nextActions": [{"description": "アクション", "assignee": "担当者", "dueDate": "YYYY-MM-DD", "timestamp": "HH:MM:SS"}]
+}
+```
 
 #### `/src/repositories` - データアクセス層
 

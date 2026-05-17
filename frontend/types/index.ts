@@ -59,6 +59,30 @@ export interface Topic {
   order: number;
 }
 
+// 議論内容の各発言の型定義
+export interface DiscussionEntry {
+  speaker: string;
+  content: string;
+}
+
+// 論点ごとのネクストアクションの型定義
+export interface AgendaNextAction {
+  assignee: string;
+  action: string;
+  dueDate?: string;
+}
+
+// 論点（議題）ごとの構造の型定義
+export interface AgendaItem {
+  id: string;
+  issue: string;
+  discussion: DiscussionEntry[];
+  conclusion: string;
+  nextIssues: string[];
+  nextActions: AgendaNextAction[];
+  order: number;
+}
+
 // 議事録の型定義
 export interface Minutes {
   jobId: string;
@@ -67,12 +91,13 @@ export interface Minutes {
   videoFileName: string;
   meetingTitle?: string;
   summary: string;
+  agendaItems?: AgendaItem[];
   decisions: Decision[];
   nextActions: NextAction[];
   transcript: string;
   formattedTranscript?: string; // 整形された文字起こし（話者・タイムスタンプ付き）
   speakers?: Speaker[];
-  topics?: Topic[]; // トピック別詳細（オプショナル：後方互換性のため）
+  topics?: Topic[]; // トピック別詳細（後方互換性のため）
 }
 
 // アップロードレスポンスの型定義

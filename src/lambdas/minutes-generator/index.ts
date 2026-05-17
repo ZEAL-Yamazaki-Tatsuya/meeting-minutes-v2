@@ -235,22 +235,52 @@ function formatMinutesAsMarkdown(minutes: Minutes, formattedTranscript: string):
 
   // 概要
   markdown += `## 概要\n\n`;
-  
-  // 全体概要
-  markdown += `### 全体概要\n\n`;
   markdown += `${minutes.summary}\n\n`;
 
-  // トピック別詳細
-  if (minutes.topics && minutes.topics.length > 0) {
-    markdown += `### トピック別詳細\n\n`;
-    minutes.topics.forEach((topic, index) => {
-      markdown += `#### ${index + 1}. ${topic.title}\n\n`;
-      markdown += `${topic.description}\n\n`;
+  // 論点ごとの議事録
+  if (minutes.agendaItems && minutes.agendaItems.length > 0) {
+    markdown += `## 議事内容\n\n`;
+    minutes.agendaItems.forEach((item, index) => {
+      markdown += `### 論点${index + 1}：${item.issue}\n\n`;
+
+      // 内容（各発言者の発言）
+      markdown += `**【内容】**\n\n`;
+      item.discussion.forEach((entry) => {
+        markdown += `${entry.speaker}：${entry.content}\n\n`;
+      });
+
+      // 結論
+      markdown += `**【結論】**\n\n`;
+      markdown += `${item.conclusion}\n\n`;
+
+      // ネクスト論点
+      if (item.nextIssues && item.nextIssues.length > 0) {
+        markdown += `**【ネクスト論点】**\n\n`;
+        item.nextIssues.forEach((issue) => {
+          markdown += `- ${issue}\n`;
+        });
+        markdown += `\n`;
+      }
+
+      // ネクストアクション
+      if (item.nextActions && item.nextActions.length > 0) {
+        markdown += `**【ネクストアクション】**\n\n`;
+        item.nextActions.forEach((action) => {
+          let actionText = `${action.assignee}：${action.action}`;
+          if (action.dueDate) {
+            actionText += `（期限：${action.dueDate}）`;
+          }
+          markdown += `- ${actionText}\n`;
+        });
+        markdown += `\n`;
+      }
+
+      markdown += `---\n\n`;
     });
   }
 
-  // 決定事項
-  markdown += `## 決定事項\n\n`;
+  // 決定事項一覧（全体サマリー）
+  markdown += `## 決定事項一覧\n\n`;
   if (minutes.decisions.length === 0) {
     markdown += `決定事項はありません。\n\n`;
   } else {
@@ -264,17 +294,23 @@ function formatMinutesAsMarkdown(minutes: Minutes, formattedTranscript: string):
     markdown += `\n`;
   }
 
-  // ネクストアクション
-  markdown += `## ネクストアクション\n\n`;
+  // ネクストアクション一覧（全体サマリー）
+  markdown += `## ネクストアクション一覧\n\n`;
   if (minutes.nextActions.length === 0) {
     markdown += `ネクストアクションはありません。\n\n`;
   } else {
     minutes.nextActions.forEach((action, index) => {
-      markdown += `${index + 1}. ${action.description}\n`;
-      markdown += `   - **担当**: ${action.assignee || '不明'}\n`;
-      markdown += `   - **期限**: ${action.dueDate || '不明'}\n`;
-      markdown += `   - **タイムスタンプ**: ${action.timestamp || '不明'}\n`;
-      markdown += `\n`;
+      let actionText = `${index + 1}. ${action.description}`;
+      if (action.assignee) {
+        actionText += `\n   - **担当**: ${action.assignee}`;
+      }
+      if (action.dueDate) {
+        actionText += `\n   - **期限**: ${action.dueDate}`;
+      }
+      if (action.timestamp) {
+        actionText += `\n   - **タイムスタンプ**: ${action.timestamp}`;
+      }
+      markdown += `${actionText}\n\n`;
     });
   }
 

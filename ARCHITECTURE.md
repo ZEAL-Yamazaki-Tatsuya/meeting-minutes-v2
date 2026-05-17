@@ -133,9 +133,14 @@ Meeting Minutes Generatorは、AWS上に構築されたサーバーレスアプ�
 1. Step FunctionsがMinutes Generator Lambdaを呼び出し
 2. LambdaがS3から文字起こし結果を取得
 3. LambdaがAmazon Bedrock（Claude/GPT）を呼び出し
-4. LLMが構造化された議事録を生成
+4. LLMが論点ごとに構造化された議事録を生成（AgendaItem形式）
 5. Lambdaが議事録をS3に保存
 6. LambdaがDynamoDBのジョブステータスを更新
+
+**議事録データ構造（AgendaItem形式）:**
+- 各論点（Issue）ごとに議論内容・結論・ネクストアクションを構造化
+- 発言者ごとの発言内容を時系列で記録
+- 後方互換性のため、従来のtopics/decisions/nextActionsフィールドも保持
 
 #### ステップ4: 取得
 1. ユーザーがフロントエンド経由で議事録をリクエスト
