@@ -34,8 +34,9 @@ interface UploadRequest {
   userId?: string; // オプション（後方互換性のため）
   metadata?: {
     meetingTitle?: string;   // 会議名
-    meetingDate?: string;    // 開催日時（ISO 8601形式）
-    participants?: string[]; // 参加者リスト
+    meetingDate?: string;    // 開始日時（ISO 8601形式）
+    meetingEndDate?: string; // 終了日時（ISO 8601形式、任意）
+    participants?: Array<{ company: string; name: string }>; // 参加者リスト（会社名+名前）
     agenda?: string[];       // 論点リスト
   };
   meetingContext?: {
@@ -58,7 +59,8 @@ interface UploadResponse {
 /**
  * メタデータの整形
  * agendaフィールドがundefinedまたは空配列の場合は保存対象から除外する
- * 既存のmetadataフィールド（meetingTitle, meetingDate, participants）はそのまま維持
+ * meetingEndDateが空文字の場合は保存しない
+ * 参加者データは新形式（{company, name}）で処理する
  */
 function buildMetadata(
   rawMetadata: UploadRequest['metadata']
@@ -72,6 +74,11 @@ function buildMetadata(
     meetingDate: rawMetadata.meetingDate,
     participants: rawMetadata.participants,
   };
+
+  // meetingEndDateが存在し、かつ空文字でない場合のみ保存
+  if (rawMetadata.meetingEndDate && rawMetadata.meetingEndDate.trim() !== '') {
+    metadata!.meetingEndDate = rawMetadata.meetingEndDate;
+  }
 
   // agendaフィールドが存在し、かつ空配列でない場合のみ保存
   if (rawMetadata.agenda && rawMetadata.agenda.length > 0) {

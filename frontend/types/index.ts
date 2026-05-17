@@ -1,3 +1,9 @@
+// 参加者エントリの型定義（会社名+名前）
+export interface ParticipantEntry {
+  company: string;  // 会社名（任意）
+  name: string;     // 名前（必須）
+}
+
 // ジョブステータスの型定義
 export type JobStatus = 
   | 'UPLOADED'      // アップロード完了
@@ -91,8 +97,9 @@ export interface Minutes {
   generatedAt: string;
   videoFileName: string;
   meetingTitle?: string;
-  meetingDate?: string;        // 会議開催日時
-  participants?: string[];     // 参加者リスト
+  meetingDate?: string;        // 会議開始日時
+  meetingEndDate?: string;     // 会議終了日時
+  participants?: string[] | ParticipantEntry[];  // 参加者リスト（旧形式・新形式のユニオン型）
   summary: string;
   agendaItems?: AgendaItem[];
   decisions: Decision[];
@@ -127,7 +134,8 @@ export interface MinutesSummary {
   userId: string;
   meetingName: string;
   createdAt: string;
-  meetingDate?: string;        // 会議開催日時
+  meetingDate?: string;        // 会議開始日時
+  meetingEndDate?: string;     // 会議終了日時
   summaryPreview: string;
   status: JobStatus;
 }
@@ -135,7 +143,8 @@ export interface MinutesSummary {
 // メタデータフォームのバリデーションエラー型定義
 export interface MetadataFormErrors {
   meetingName?: string;        // 会議名のエラーメッセージ
-  meetingDate?: string;        // 開催日時のエラーメッセージ
+  meetingDate?: string;        // 開始日時のエラーメッセージ
+  meetingEndDate?: string;     // 終了日時のエラーメッセージ
   participants?: string;       // 参加者のエラーメッセージ
 }
 

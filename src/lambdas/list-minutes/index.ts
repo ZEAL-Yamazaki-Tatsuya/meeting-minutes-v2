@@ -21,7 +21,8 @@ interface MinutesSummary {
     userId: string;
     meetingName: string;
     createdAt: string;
-    meetingDate?: string;   // 会議開催日時（metadata.meetingDate から取得）
+    meetingDate?: string;      // 会議開催日時（metadata.meetingDate から取得）
+    meetingEndDate?: string;   // 会議終了日時（metadata.meetingEndDate から取得）
     summaryPreview: string;
     status: string;
 }
@@ -125,12 +126,14 @@ async function listMinutes(
 
     // レスポンス用のデータに変換
     // meetingDate: metadata.meetingDate が存在すれば含める（フロントエンドでフォールバック処理）
+    // meetingEndDate: metadata.meetingEndDate が存在すれば含める（時間帯表示用）
     const minutes: MinutesSummary[] = paginatedJobs.map(job => ({
         jobId: job.jobId,
         userId: job.userId,
         meetingName: job.videoFileName,
         createdAt: job.createdAt,
         meetingDate: job.metadata?.meetingDate,
+        meetingEndDate: job.metadata?.meetingEndDate,
         summaryPreview: job.summaryPreview || '概要がありません',
         status: job.status,
     }));

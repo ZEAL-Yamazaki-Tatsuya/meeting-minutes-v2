@@ -12,8 +12,9 @@ export type JobStatus =
 
 export interface MeetingJobMetadata {
   meetingTitle?: string;     // 会議名
-  meetingDate?: string;      // 開催日時（ISO 8601形式）
-  participants?: string[];   // 参加者リスト
+  meetingDate?: string;      // 開始日時（ISO 8601形式）
+  meetingEndDate?: string;   // 終了日時（ISO 8601形式、任意）
+  participants?: string[] | Array<{ company: string; name: string }>;  // 参加者リスト（旧形式・新形式のユニオン型）
   agenda?: string[];         // 論点リスト
 }
 

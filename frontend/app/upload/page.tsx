@@ -7,8 +7,8 @@ import apiService from '@/lib/api-service';
 import { FILE_UPLOAD_CONFIG } from '@/lib/config';
 import ProtectedRoute from '@/components/protected-route';
 import MetadataForm from '@/components/metadata-form';
-import { validateMetadataForm, filterEmptyValues } from '@/lib/metadata-validation';
-import { MetadataFormErrors } from '@/types';
+import { validateMetadataForm, filterEmptyValues, filterEmptyParticipants } from '@/lib/metadata-validation';
+import { MetadataFormErrors, ParticipantEntry } from '@/types';
 
 /**
  * ファイルアップロードページ
@@ -23,8 +23,9 @@ function UploadPageContent() {
 
   // 会議メタデータの状態管理
   const [meetingName, setMeetingName] = useState('');
-  const [meetingDate, setMeetingDate] = useState('');
-  const [participants, setParticipants] = useState<string[]>(['']);
+  const [meetingStartDate, setMeetingStartDate] = useState('');
+  const [meetingEndDate, setMeetingEndDate] = useState('');
+  const [participants, setParticipants] = useState<ParticipantEntry[]>([{ company: '', name: '' }]);
   const [agenda, setAgenda] = useState<string[]>(['']);
   const [formErrors, setFormErrors] = useState<MetadataFormErrors>({});
 
@@ -135,7 +136,7 @@ function UploadPageContent() {
     }
 
     // メタデータフォームのバリデーション実行
-    const errors = validateMetadataForm(meetingName, meetingDate, participants);
+    const errors = validateMetadataForm(meetingName, meetingStartDate, meetingEndDate, participants);
     setFormErrors(errors);
 
     // バリデーションエラーがある場合はアップロードを中止
@@ -149,13 +150,14 @@ function UploadPageContent() {
 
     try {
       // 送信前に空の参加者・論点をフィルタリング
-      const filteredParticipants = filterEmptyValues(participants);
+      const filteredParticipants = filterEmptyParticipants(participants);
       const filteredAgenda = filterEmptyValues(agenda);
 
       // 会議メタデータを準備
       const metadata = {
         meetingTitle: meetingName.trim(),
-        meetingDate: meetingDate,
+        meetingDate: meetingStartDate,
+        meetingEndDate: meetingEndDate || undefined,
         participants: filteredParticipants,
         agenda: filteredAgenda.length > 0 ? filteredAgenda : undefined,
       };
@@ -374,11 +376,13 @@ function UploadPageContent() {
                 </p>
                 <MetadataForm
                   meetingName={meetingName}
-                  meetingDate={meetingDate}
+                  meetingStartDate={meetingStartDate}
+                  meetingEndDate={meetingEndDate}
                   participants={participants}
                   agenda={agenda}
                   onMeetingNameChange={setMeetingName}
-                  onMeetingDateChange={setMeetingDate}
+                  onMeetingStartDateChange={setMeetingStartDate}
+                  onMeetingEndDateChange={setMeetingEndDate}
                   onParticipantsChange={setParticipants}
                   onAgendaChange={setAgenda}
                   errors={formErrors}

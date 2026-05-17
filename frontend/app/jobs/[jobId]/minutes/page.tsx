@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
 import apiService from '@/lib/api-service';
 import { Minutes, Decision, NextAction, Topic } from '@/types';
+import { formatMeetingDateRange, formatParticipant } from '@/lib/metadata-validation';
 import ProtectedRoute from '@/components/protected-route';
 import TopicList from '@/components/topic-list';
 import ChatButton from '@/components/chat-button';
@@ -287,10 +288,10 @@ function MinutesPageContent() {
                 {minutes && (minutes.meetingDate || (minutes.participants && minutes.participants.length > 0)) && (
                   <div className="text-gray-600 text-xs sm:text-sm space-y-1 mb-1">
                     {minutes.meetingDate && (
-                      <p>📅 開催日時: {formatDate(minutes.meetingDate)}</p>
+                      <p>📅 開催日時: {formatMeetingDateRange(minutes.meetingDate, minutes.meetingEndDate)}</p>
                     )}
                     {minutes.participants && minutes.participants.length > 0 && (
-                      <p>👥 参加者: {minutes.participants.join('、')}</p>
+                      <p>👥 参加者: {minutes.participants.map(p => formatParticipant(p)).join('、')}</p>
                     )}
                   </div>
                 )}

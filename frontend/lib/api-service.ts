@@ -29,7 +29,8 @@ class APIService {
     metadata?: {
       meetingTitle?: string;
       meetingDate?: string;
-      participants?: string[];
+      meetingEndDate?: string;
+      participants?: Array<{ company: string; name: string }>;
       agenda?: string[];
     }
   ): Promise<UploadResponse> {

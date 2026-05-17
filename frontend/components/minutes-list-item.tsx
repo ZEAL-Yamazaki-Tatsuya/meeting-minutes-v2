@@ -1,5 +1,5 @@
 import { MinutesSummary } from '@/types';
-import { resolveDisplayDate } from '@/lib/metadata-validation';
+import { resolveDisplayDate, formatMeetingDateRange } from '@/lib/metadata-validation';
 
 interface MinutesListItemProps {
   minute: MinutesSummary;
@@ -10,22 +10,13 @@ interface MinutesListItemProps {
  * 議事録一覧アイテムコンポーネント
  * 会議名、日時、概要プレビューを表示
  * meetingDate が存在する場合はそれを優先し、なければ createdAt にフォールバック
+ * 終了日時がある場合は時間帯表示（例: 2025/01/15 10:00 〜 11:00）
  */
 export default function MinutesListItem({ minute, onClick }: MinutesListItemProps) {
-  // 日時をフォーマット
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   // 表示用の日時を解決（meetingDate 優先、なければ createdAt にフォールバック）
   const displayDate = resolveDisplayDate(minute.meetingDate, minute.createdAt);
+  // 時間帯フォーマットで表示（終了日時がある場合は「〜 HH:MM」を付加）
+  const formattedDate = formatMeetingDateRange(displayDate, minute.meetingEndDate);
 
   return (
     <div
@@ -54,7 +45,7 @@ export default function MinutesListItem({ minute, onClick }: MinutesListItemProp
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>{formatDate(displayDate)}</span>
+          <span>{formattedDate}</span>
         </div>
 
         {/* 概要プレビュー */}
