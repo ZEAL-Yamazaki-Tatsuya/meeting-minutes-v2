@@ -18,11 +18,25 @@ const repository = new MeetingJobRepository(
 const s3Client = new S3Client({ region: process.env.AWS_REGION });
 
 /**
+ * 議事内容（agendaItems）の型定義
+ */
+interface AgendaItem {
+    id: string;
+    issue: string;
+    discussion: Array<{ speaker: string; content: string }>;
+    conclusion: string;
+    nextIssues: string[];
+    nextActions: Array<{ assignee: string; action: string; dueDate?: string }>;
+    order: number;
+}
+
+/**
  * Markdownから構造化データを抽出する
  */
 function parseMarkdownMinutes(markdown: string): {
     summary: string;
     topics?: Array<{ id: string; title: string; description: string; order: number }>;
+    agendaItems?: AgendaItem[];
     decisions: Array<{ id: string; description: string; timestamp?: string }>;
     nextActions: Array<{ id: string; description: string; assignee?: string; dueDate?: string; timestamp?: string }>;
     transcript: string;
@@ -31,6 +45,7 @@ function parseMarkdownMinutes(markdown: string): {
     const lines = markdown.split('\n');
     let summary = '';
     const topics: Array<{ id: string; title: string; description: string; order: number }> = [];
+    const agendaItems: AgendaItem[] = [];
     const decisions: Array<{ id: string; description: string; timestamp?: string }> = [];
     const nextActions: Array<{ id: string; description: string; assignee?: string; dueDate?: string; timestamp?: string }> = [];
     let transcript = '';
@@ -39,6 +54,10 @@ function parseMarkdownMinutes(markdown: string): {
     let currentSection = '';
     let currentText = '';
     let currentTopicTitle = '';
+
+    // 議事内容パース用の状態変数
+    let currentAgendaItem: Partial<AgendaItem> | null = null;
+    let agendaSubSection = ''; // 'discussion' | 'conclusion' | 'nextIssues' | 'nextActions'
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -59,6 +78,23 @@ function parseMarkdownMinutes(markdown: string): {
             currentSection = 'topics';
             currentText = '';
             continue;
+        } else if (line.startsWith('## 議事内容')) {
+            // 議事内容セクションの開始
+            if (currentSection === 'summary') {
+                summary = currentText.trim();
+            } else if (currentSection === 'topics' && currentTopicTitle && currentText.trim()) {
+                topics.push({
+                    id: `topic-${topics.length}`,
+                    title: currentTopicTitle,
+                    description: currentText.trim(),
+                    order: topics.length,
+                });
+            }
+            currentSection = 'agendaItems';
+            currentText = '';
+            currentAgendaItem = null;
+            agendaSubSection = '';
+            continue;
         } else if (line.startsWith('## 決定事項')) {
             if (currentSection === 'summary') {
                 summary = currentText.trim();
@@ -70,17 +106,128 @@ function parseMarkdownMinutes(markdown: string): {
                     description: currentText.trim(),
                     order: topics.length,
                 });
+            } else if (currentSection === 'agendaItems' && currentAgendaItem) {
+                // 最後の論点を保存
+                finalizeAgendaItem(currentAgendaItem, agendaItems);
+                currentAgendaItem = null;
             }
             currentSection = 'decisions';
             currentText = '';
             continue;
         } else if (line.startsWith('## ネクストアクション')) {
+            // 議事内容セクションの後に直接ネクストアクション一覧が来る場合
+            if (currentSection === 'agendaItems' && currentAgendaItem) {
+                finalizeAgendaItem(currentAgendaItem, agendaItems);
+                currentAgendaItem = null;
+            }
             currentSection = 'nextActions';
             currentText = '';
             continue;
         } else if (line.startsWith('## 文字起こし全文')) {
+            // 議事内容セクションの後に直接文字起こしが来る場合
+            if (currentSection === 'agendaItems' && currentAgendaItem) {
+                finalizeAgendaItem(currentAgendaItem, agendaItems);
+                currentAgendaItem = null;
+            }
             currentSection = 'transcript';
             currentText = '';
+            continue;
+        }
+
+        // 議事内容セクションのパース
+        if (currentSection === 'agendaItems') {
+            // 論点ヘッダーを検出（### 論点N：〇〇）
+            const agendaHeaderMatch = line.match(/^###\s+論点\d+[：:](.+)$/);
+            if (agendaHeaderMatch) {
+                // 前の論点を保存
+                if (currentAgendaItem) {
+                    finalizeAgendaItem(currentAgendaItem, agendaItems);
+                }
+                // 新しい論点を開始
+                currentAgendaItem = {
+                    id: `agenda-${agendaItems.length + 1}`,
+                    issue: agendaHeaderMatch[1].trim(),
+                    discussion: [],
+                    conclusion: '',
+                    nextIssues: [],
+                    nextActions: [],
+                    order: agendaItems.length,
+                };
+                agendaSubSection = '';
+                continue;
+            }
+
+            // 区切り線（---）で論点の終了を検出
+            if (line === '---') {
+                if (currentAgendaItem) {
+                    finalizeAgendaItem(currentAgendaItem, agendaItems);
+                    currentAgendaItem = null;
+                }
+                agendaSubSection = '';
+                continue;
+            }
+
+            // サブセクションヘッダーを検出
+            if (line === '**【内容】**') {
+                agendaSubSection = 'discussion';
+                continue;
+            } else if (line === '**【結論】**') {
+                agendaSubSection = 'conclusion';
+                currentText = '';
+                continue;
+            } else if (line === '**【ネクスト論点】**') {
+                // 結論テキストを確定
+                if (agendaSubSection === 'conclusion' && currentAgendaItem) {
+                    currentAgendaItem.conclusion = currentText.trim();
+                }
+                agendaSubSection = 'nextIssues';
+                currentText = '';
+                continue;
+            } else if (line === '**【ネクストアクション】**') {
+                // 結論テキストを確定（ネクスト論点がない場合）
+                if (agendaSubSection === 'conclusion' && currentAgendaItem) {
+                    currentAgendaItem.conclusion = currentText.trim();
+                }
+                agendaSubSection = 'nextActions';
+                currentText = '';
+                continue;
+            }
+
+            // 各サブセクションの内容をパース
+            if (currentAgendaItem && line) {
+                if (agendaSubSection === 'discussion') {
+                    // 発言をパース（話者：内容 形式）
+                    const speakerMatch = line.match(/^(.+?)[：:](.+)$/);
+                    if (speakerMatch) {
+                        currentAgendaItem.discussion = currentAgendaItem.discussion || [];
+                        currentAgendaItem.discussion.push({
+                            speaker: speakerMatch[1].trim(),
+                            content: speakerMatch[2].trim(),
+                        });
+                    }
+                } else if (agendaSubSection === 'conclusion') {
+                    // 結論テキストを蓄積
+                    currentText += line + '\n';
+                } else if (agendaSubSection === 'nextIssues') {
+                    // ネクスト論点をパース（- で始まる行）
+                    const issueMatch = line.match(/^-\s+(.+)$/);
+                    if (issueMatch) {
+                        currentAgendaItem.nextIssues = currentAgendaItem.nextIssues || [];
+                        currentAgendaItem.nextIssues.push(issueMatch[1].trim());
+                    }
+                } else if (agendaSubSection === 'nextActions') {
+                    // ネクストアクションをパース（- 担当者：アクション（期限：日付）形式）
+                    const actionMatch = line.match(/^-\s+(.+?)[：:](.+?)(?:[（(]期限[：:](.+?)[）)])?$/);
+                    if (actionMatch) {
+                        currentAgendaItem.nextActions = currentAgendaItem.nextActions || [];
+                        currentAgendaItem.nextActions.push({
+                            assignee: actionMatch[1].trim(),
+                            action: actionMatch[2].trim(),
+                            dueDate: actionMatch[3]?.trim(),
+                        });
+                    }
+                }
+            }
             continue;
         }
 
@@ -179,16 +326,37 @@ function parseMarkdownMinutes(markdown: string): {
             description: currentText.trim(),
             order: topics.length,
         });
+    } else if (currentSection === 'agendaItems' && currentAgendaItem) {
+        // 最後の論点を保存
+        finalizeAgendaItem(currentAgendaItem, agendaItems);
     }
 
     return {
         summary,
         topics: topics.length > 0 ? topics : undefined,
+        agendaItems: agendaItems.length > 0 ? agendaItems : undefined,
         decisions,
         nextActions,
         transcript,
         speakers,
     };
+}
+
+/**
+ * 論点データを確定してagendaItems配列に追加する
+ */
+function finalizeAgendaItem(item: Partial<AgendaItem>, agendaItems: AgendaItem[]): void {
+    if (!item.issue) return;
+
+    agendaItems.push({
+        id: item.id || `agenda-${agendaItems.length + 1}`,
+        issue: item.issue,
+        discussion: item.discussion || [],
+        conclusion: item.conclusion || '',
+        nextIssues: item.nextIssues || [],
+        nextActions: item.nextActions || [],
+        order: item.order ?? agendaItems.length,
+    });
 }
 
 /**
@@ -266,6 +434,16 @@ async function getMinutes(
     // Markdownから構造化データを抽出
     const parsedMinutes = parseMarkdownMinutes(minutesContent);
 
+    // 整形された文字起こしをS3から取得（存在する場合）
+    let formattedTranscript: string | undefined;
+    const transcriptTextS3Key = `${job.userId}/${job.jobId}/transcript.txt`;
+    try {
+        formattedTranscript = await getMinutesFromS3(transcriptTextS3Key, outputBucketName);
+    } catch {
+        // transcript.txt が存在しない場合は無視（後方互換性のため）
+        logger.info('整形された文字起こしファイルが見つかりません（スキップ）', { transcriptTextS3Key });
+    }
+
     logger.info('Minutes retrieved successfully', { jobId, userId });
 
     return {
@@ -283,11 +461,16 @@ async function getMinutes(
                 generatedAt: job.updatedAt,
                 videoFileName: job.videoFileName,
                 meetingTitle: job.metadata?.meetingTitle,
+                meetingDate: job.metadata?.meetingDate,
+                meetingEndDate: job.metadata?.meetingEndDate,
+                participants: job.metadata?.participants,
                 summary: parsedMinutes.summary,
+                agendaItems: parsedMinutes.agendaItems,
                 topics: parsedMinutes.topics,
                 decisions: parsedMinutes.decisions,
                 nextActions: parsedMinutes.nextActions,
                 transcript: parsedMinutes.transcript,
+                formattedTranscript,
                 speakers: parsedMinutes.speakers,
             },
         }),
