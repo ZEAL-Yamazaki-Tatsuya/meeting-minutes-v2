@@ -68,11 +68,16 @@ export class BedrockClient {
 
   /**
    * 議事録を生成する
+   * @param jobId ジョブID
+   * @param parsedTranscript パース済み文字起こし
+   * @param meetingContext 会議コンテキスト（オプション）
+   * @param agenda 論点リスト（オプション）- metadata.agenda から取得
    */
   async generateMinutes(
     jobId: string,
     parsedTranscript: ParsedTranscript,
-    meetingContext?: MeetingContext
+    meetingContext?: MeetingContext,
+    agenda?: string[]
   ): Promise<Minutes> {
     try {
       logger.info('議事録生成を開始', {
@@ -80,10 +85,11 @@ export class BedrockClient {
         transcriptLength: parsedTranscript.fullText.length,
         speakerCount: parsedTranscript.speakerCount,
         meetingContext,
+        agendaCount: agenda?.length || 0,
       });
 
-      // プロンプトを構築（会議コンテキストを含む）
-      const prompt = this.buildPrompt(parsedTranscript, meetingContext);
+      // プロンプトを構築（会議コンテキストと論点を含む）
+      const prompt = this.buildPrompt(parsedTranscript, meetingContext, agenda);
 
       // デバッグ: プロンプトの最初の500文字をログ出力
       logger.info('LLMに送信するプロンプト（抜粋）', {
@@ -118,8 +124,11 @@ export class BedrockClient {
 
   /**
    * プロンプトテンプレートを構築する
+   * @param parsedTranscript パース済み文字起こし
+   * @param meetingContext 会議コンテキスト（オプション）
+   * @param agenda 論点リスト（オプション）- 入力された論点に基づいて議事録を構造化
    */
-  private buildPrompt(parsedTranscript: ParsedTranscript, meetingContext?: MeetingContext): string {
+  buildPrompt(parsedTranscript: ParsedTranscript, meetingContext?: MeetingContext, agenda?: string[]): string {
     // 話者情報付きのテキストを構築
     let transcriptText = '';
 
@@ -168,6 +177,11 @@ export class BedrockClient {
       focusInstruction = `\n**重要**: 以下の項目を特に重点的に抽出してください：${meetingContext.focusAreas.join('、')}\n`;
     }
 
+    // 論点ベースの構造化指示を構築
+    // agenda が存在する場合は入力された論点をベースに構造化
+    // agenda が存在しない場合はAIが文字起こしから論点を自動抽出
+    const agendaInstruction = this.buildAgendaInstruction(agenda);
+
     const prompt = `以下は会議の文字起こしテキストです。このテキストを分析して、論点ベースの構造化された議事録を生成してください。
 ${contextSection}
 # 文字起こしテキスト
@@ -176,6 +190,8 @@ ${transcriptText}
 
 # 指示
 ${focusInstruction}
+${agendaInstruction}
+
 上記の会議内容から、以下の形式で議事録を生成してください。
 
 **重要：議事録は「論点（議題）」ごとに整理してください。各論点について、議論の内容、結論、次に検討すべき論点、ネクストアクションをまとめます。**
@@ -281,6 +297,33 @@ ${focusInstruction}
 5. **タイムスタンプ**: decisions と nextActions（トップレベル）には必ずtimestampを含めてください`;
 
     return prompt;
+  }
+
+  /**
+   * 論点ベースの構造化指示を構築する
+   * - agenda が存在する場合: 入力された論点をベースに議事録を構造化するよう指示
+   * - agenda が存在しない場合: AIが文字起こしから論点を自動抽出するよう指示
+   * - 論点が20件を超える場合は最初の20件に制限
+   * @param agenda 論点リスト（オプション）
+   */
+  buildAgendaInstruction(agenda?: string[]): string {
+    // 論点の最大件数
+    const MAX_AGENDA_ITEMS = 20;
+
+    if (agenda && agenda.length > 0) {
+      // 論点が20件を超える場合は最初の20件に制限
+      const limitedAgenda = agenda.slice(0, MAX_AGENDA_ITEMS);
+
+      // 論点リストを番号付きで構築
+      const agendaList = limitedAgenda
+        .map((item, index) => `${index + 1}. ${item}`)
+        .join('\n');
+
+      return `以下の論点に基づいて議事録を構造化してください：\n${agendaList}\n\n各論点について、文字起こしテキストから関連する議論内容を抽出し、結論・ネクスト論点・ネクストアクションを整理してください。文字起こしに含まれていない論点については、「議論なし」と記載してください。`;
+    }
+
+    // 論点が入力されていない場合はAIが自動抽出
+    return '文字起こしから主要な論点を抽出し、議事録を構造化してください。';
   }
 
   /**

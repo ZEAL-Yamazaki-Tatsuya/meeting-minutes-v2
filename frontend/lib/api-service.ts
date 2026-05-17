@@ -19,8 +19,7 @@ class APIService {
    * @param fileName ファイル名
    * @param fileSize ファイルサイズ
    * @param contentType ファイルのMIMEタイプ
-   * @param metadata メタデータ（オプション）
-   * @param meetingContext 会議コンテキスト（オプション）
+   * @param metadata メタデータ（会議名・開催日時・参加者・論点）
    * @returns ジョブIDとアップロードURL
    */
   async getUploadUrl(
@@ -31,12 +30,7 @@ class APIService {
       meetingTitle?: string;
       meetingDate?: string;
       participants?: string[];
-    },
-    meetingContext?: {
-      meetingType?: string;
-      attendees?: string[];
-      focusAreas?: string[];
-      additionalInstructions?: string;
+      agenda?: string[];
     }
   ): Promise<UploadResponse> {
     const response = await apiClient.post<UploadResponse>('/api/upload', {
@@ -44,7 +38,6 @@ class APIService {
       fileSize,
       contentType,
       metadata,
-      meetingContext,
     });
     return response.data;
   }

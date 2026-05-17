@@ -86,10 +86,22 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
       segmentCount: parsedTranscript.segments.length,
     });
 
-    // 2. Bedrockを使用して議事録を生成（会議コンテキストを含む）
+    // 2. DynamoDBからジョブのmetadataを取得（論点ベースプロンプト用）
+    const job = await repository.getJob(jobId, userId);
+    const metadata = job?.metadata;
+    const agenda = metadata?.agenda;
+
+    logger.info('ジョブメタデータを取得', {
+      jobId,
+      hasMetadata: !!metadata,
+      hasAgenda: !!agenda,
+      agendaCount: agenda?.length || 0,
+    });
+
+    // 3. Bedrockを使用して議事録を生成（会議コンテキストと論点を含む）
     const bedrockStartTime = Date.now();
-    logger.info('議事録生成を開始', { jobId, meetingContext });
-    const minutes = await bedrockClient.generateMinutes(jobId, parsedTranscript, meetingContext);
+    logger.info('議事録生成を開始', { jobId, meetingContext, agendaCount: agenda?.length || 0 });
+    const minutes = await bedrockClient.generateMinutes(jobId, parsedTranscript, meetingContext, agenda);
     logger.logDuration('議事録生成完了', bedrockStartTime, {
       decisionsCount: minutes.decisions.length,
       nextActionsCount: minutes.nextActions.length,
@@ -103,11 +115,11 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
       Component: 'MinutesGenerator',
     });
 
-    // 3. 整形されたTranscriptを生成してminutesオブジェクトに追加
+    // 4. 整形されたTranscriptを生成してminutesオブジェクトに追加
     const formattedTranscript = transcriptParser.formatTranscript(parsedTranscript);
     minutes.formattedTranscript = formattedTranscript;
 
-    // 4. 議事録をMarkdown形式でS3に保存（整形されたTranscriptを含む）
+    // 5. 議事録をMarkdown形式でS3に保存（整形されたTranscriptを含む）
     const minutesS3Key = `${userId}/${jobId}/minutes.md`;
     const markdownContent = formatMinutesAsMarkdown(minutes, formattedTranscript);
 
@@ -122,7 +134,7 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
 
     logger.info('議事録をS3に保存', { minutesS3Key });
 
-    // 5. 整形されたTranscriptもテキストファイルとして保存
+    // 6. 整形されたTranscriptもテキストファイルとして保存
     const transcriptTextS3Key = `${userId}/${jobId}/transcript.txt`;
 
     await s3Client.send(
@@ -136,14 +148,14 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
 
     logger.info('整形されたTranscriptをS3に保存', { transcriptTextS3Key });
 
-    // 6. 概要の最初の200文字を抽出（一覧表示用）
+    // 7. 概要の最初の200文字を抽出（一覧表示用）
     const summaryPreview = extractSummaryPreview(minutes.summary);
     logger.info('概要プレビューを抽出', { 
       summaryLength: minutes.summary.length, 
       previewLength: summaryPreview.length 
     });
 
-    // 7. DynamoDBのジョブステータスを COMPLETED に更新
+    // 8. DynamoDBのジョブステータスを COMPLETED に更新
     await repository.updateJob({
       jobId,
       userId,

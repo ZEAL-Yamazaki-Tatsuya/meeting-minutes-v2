@@ -11,9 +11,10 @@ export type JobStatus =
   | 'FAILED';       // 失敗
 
 export interface MeetingJobMetadata {
-  meetingTitle?: string;
-  meetingDate?: string;
-  participants?: string[];
+  meetingTitle?: string;     // 会議名
+  meetingDate?: string;      // 開催日時（ISO 8601形式）
+  participants?: string[];   // 参加者リスト
+  agenda?: string[];         // 論点リスト
 }
 
 export interface MeetingContext {

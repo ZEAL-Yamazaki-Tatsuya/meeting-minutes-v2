@@ -1,4 +1,5 @@
 import { MinutesSummary } from '@/types';
+import { resolveDisplayDate } from '@/lib/metadata-validation';
 
 interface MinutesListItemProps {
   minute: MinutesSummary;
@@ -7,7 +8,8 @@ interface MinutesListItemProps {
 
 /**
  * 議事録一覧アイテムコンポーネント
- * 会議名、作成日時、概要プレビューを表示
+ * 会議名、日時、概要プレビューを表示
+ * meetingDate が存在する場合はそれを優先し、なければ createdAt にフォールバック
  */
 export default function MinutesListItem({ minute, onClick }: MinutesListItemProps) {
   // 日時をフォーマット
@@ -22,6 +24,9 @@ export default function MinutesListItem({ minute, onClick }: MinutesListItemProp
     });
   };
 
+  // 表示用の日時を解決（meetingDate 優先、なければ createdAt にフォールバック）
+  const displayDate = resolveDisplayDate(minute.meetingDate, minute.createdAt);
+
   return (
     <div
       onClick={() => onClick(minute.jobId)}
@@ -34,7 +39,7 @@ export default function MinutesListItem({ minute, onClick }: MinutesListItemProp
           {minute.meetingName}
         </h3>
 
-        {/* 作成日時 */}
+        {/* 日時表示（meetingDate 優先、createdAt フォールバック） */}
         <div className="flex items-center text-xs sm:text-sm text-gray-500">
           <svg
             className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-gray-400 flex-shrink-0"
@@ -49,7 +54,7 @@ export default function MinutesListItem({ minute, onClick }: MinutesListItemProp
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>{formatDate(minute.createdAt)}</span>
+          <span>{formatDate(displayDate)}</span>
         </div>
 
         {/* 概要プレビュー */}

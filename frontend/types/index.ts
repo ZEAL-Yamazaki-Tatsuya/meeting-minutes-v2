@@ -25,6 +25,7 @@ export interface Job {
     meetingTitle?: string;
     meetingDate?: string;
     participants?: string[];
+    agenda?: string[];       // 論点リスト
   };
 }
 
@@ -90,6 +91,8 @@ export interface Minutes {
   generatedAt: string;
   videoFileName: string;
   meetingTitle?: string;
+  meetingDate?: string;        // 会議開催日時
+  participants?: string[];     // 参加者リスト
   summary: string;
   agendaItems?: AgendaItem[];
   decisions: Decision[];
@@ -124,8 +127,16 @@ export interface MinutesSummary {
   userId: string;
   meetingName: string;
   createdAt: string;
+  meetingDate?: string;        // 会議開催日時
   summaryPreview: string;
   status: JobStatus;
+}
+
+// メタデータフォームのバリデーションエラー型定義
+export interface MetadataFormErrors {
+  meetingName?: string;        // 会議名のエラーメッセージ
+  meetingDate?: string;        // 開催日時のエラーメッセージ
+  participants?: string;       // 参加者のエラーメッセージ
 }
 
 // 議事録フィルターの型定義

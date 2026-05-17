@@ -283,6 +283,17 @@ function MinutesPageContent() {
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 break-words">
                   {minutes?.meetingTitle || minutes?.videoFileName || '議事録'}
                 </h1>
+                {/* 開催日時と参加者をタイトル下にシンプルに表示 */}
+                {minutes && (minutes.meetingDate || (minutes.participants && minutes.participants.length > 0)) && (
+                  <div className="text-gray-600 text-xs sm:text-sm space-y-1 mb-1">
+                    {minutes.meetingDate && (
+                      <p>📅 開催日時: {formatDate(minutes.meetingDate)}</p>
+                    )}
+                    {minutes.participants && minutes.participants.length > 0 && (
+                      <p>👥 参加者: {minutes.participants.join('、')}</p>
+                    )}
+                  </div>
+                )}
                 {minutes && (
                   <p className="text-gray-600 text-xs sm:text-sm">
                     生成日時: {formatDate(minutes.generatedAt)}

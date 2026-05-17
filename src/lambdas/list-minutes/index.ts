@@ -21,6 +21,7 @@ interface MinutesSummary {
     userId: string;
     meetingName: string;
     createdAt: string;
+    meetingDate?: string;   // 会議開催日時（metadata.meetingDate から取得）
     summaryPreview: string;
     status: string;
 }
@@ -123,11 +124,13 @@ async function listMinutes(
     const paginatedJobs = filteredJobs.slice(startIndex, endIndex);
 
     // レスポンス用のデータに変換
+    // meetingDate: metadata.meetingDate が存在すれば含める（フロントエンドでフォールバック処理）
     const minutes: MinutesSummary[] = paginatedJobs.map(job => ({
         jobId: job.jobId,
         userId: job.userId,
         meetingName: job.videoFileName,
         createdAt: job.createdAt,
+        meetingDate: job.metadata?.meetingDate,
         summaryPreview: job.summaryPreview || '概要がありません',
         status: job.status,
     }));

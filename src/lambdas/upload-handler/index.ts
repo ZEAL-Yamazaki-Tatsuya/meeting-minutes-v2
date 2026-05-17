@@ -33,9 +33,10 @@ interface UploadRequest {
   contentType: string;
   userId?: string; // オプション（後方互換性のため）
   metadata?: {
-    meetingTitle?: string;
-    meetingDate?: string;
-    participants?: string[];
+    meetingTitle?: string;   // 会議名
+    meetingDate?: string;    // 開催日時（ISO 8601形式）
+    participants?: string[]; // 参加者リスト
+    agenda?: string[];       // 論点リスト
   };
   meetingContext?: {
     meetingType?: string; // 会議の種類（例：定例会議、プロジェクト会議、ブレスト等）
@@ -52,6 +53,32 @@ interface UploadResponse {
   jobId: string;
   uploadUrl: string;
   expiresIn: number;
+}
+
+/**
+ * メタデータの整形
+ * agendaフィールドがundefinedまたは空配列の場合は保存対象から除外する
+ * 既存のmetadataフィールド（meetingTitle, meetingDate, participants）はそのまま維持
+ */
+function buildMetadata(
+  rawMetadata: UploadRequest['metadata']
+): UploadRequest['metadata'] {
+  if (!rawMetadata) {
+    return undefined;
+  }
+
+  const metadata: UploadRequest['metadata'] = {
+    meetingTitle: rawMetadata.meetingTitle,
+    meetingDate: rawMetadata.meetingDate,
+    participants: rawMetadata.participants,
+  };
+
+  // agendaフィールドが存在し、かつ空配列でない場合のみ保存
+  if (rawMetadata.agenda && rawMetadata.agenda.length > 0) {
+    metadata!.agenda = rawMetadata.agenda;
+  }
+
+  return metadata;
 }
 
 /**
@@ -163,13 +190,16 @@ async function handleUpload(
   const sanitizedFileName = request.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const s3Key = `${userId}/${timestamp}_${sanitizedFileName}`;
 
+  // メタデータの整形（agendaフィールドのフィルタリング）
+  const metadata = buildMetadata(request.metadata);
+
   // DynamoDBにジョブレコードを作成（会議コンテキストを含む）
   const job = await jobRepository.createJob({
     userId: userId,
     videoFileName: request.fileName,
     videoS3Key: s3Key,
     videoSize: request.fileSize,
-    metadata: request.metadata,
+    metadata,
     meetingContext: request.meetingContext,
   });
 
