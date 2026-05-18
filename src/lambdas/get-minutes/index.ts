@@ -80,7 +80,7 @@ function parseMarkdownMinutes(markdown: string): {
             continue;
         } else if (line.startsWith('## 議事内容')) {
             // 議事内容セクションの開始
-            if (currentSection === 'summary') {
+            if (currentSection === 'summary' || currentSection === 'overview') {
                 summary = currentText.trim();
             } else if (currentSection === 'topics' && currentTopicTitle && currentText.trim()) {
                 topics.push({
@@ -96,7 +96,7 @@ function parseMarkdownMinutes(markdown: string): {
             agendaSubSection = '';
             continue;
         } else if (line.startsWith('## 決定事項')) {
-            if (currentSection === 'summary') {
+            if (currentSection === 'summary' || currentSection === 'overview') {
                 summary = currentText.trim();
             } else if (currentSection === 'topics' && currentTopicTitle && currentText.trim()) {
                 // 最後のトピックを保存
@@ -252,7 +252,7 @@ function parseMarkdownMinutes(markdown: string): {
         }
 
         // 各セクションの内容を処理
-        if (currentSection === 'summary' && line && !line.startsWith('#')) {
+        if ((currentSection === 'summary' || currentSection === 'overview') && line && !line.startsWith('#')) {
             currentText += line + '\n';
         } else if (currentSection === 'topics' && line && !line.startsWith('#')) {
             currentText += line + '\n';
