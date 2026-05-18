@@ -30,7 +30,8 @@ export interface Job {
   metadata?: {
     meetingTitle?: string;
     meetingDate?: string;
-    participants?: string[];
+    meetingEndDate?: string;  // 終了日時
+    participants?: string[] | ParticipantEntry[];  // 参加者リスト（旧形式・新形式のユニオン型）
     agenda?: string[];       // 論点リスト
   };
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import apiService from '@/lib/api-service';
 import { Job, JobStatus } from '@/types';
+import { formatMeetingDateRange, formatParticipant } from '@/lib/metadata-validation';
 import ProtectedRoute from '@/components/protected-route';
 
 /**
@@ -425,7 +426,7 @@ function JobDetailPageContent() {
                         会議日時
                       </div>
                       <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
-                        {job.metadata.meetingDate}
+                        {formatMeetingDateRange(job.metadata.meetingDate, job.metadata.meetingEndDate)}
                       </div>
                     </div>
                   )}
@@ -436,7 +437,7 @@ function JobDetailPageContent() {
                         参加者
                       </div>
                       <div className="sm:w-2/3 text-gray-900 text-sm sm:text-base">
-                        {job.metadata.participants.join(', ')}
+                        {job.metadata.participants.map(p => formatParticipant(p)).join('、')}
                       </div>
                     </div>
                   )}
