@@ -9,6 +9,7 @@ import { BedrockClient } from '../../utils/bedrock-client';
 import { MeetingJobRepository } from '../../repositories/meeting-job-repository';
 import { Logger } from '../../utils/logger';
 import { Minutes } from '../../models/minutes';
+import { MeetingJobMetadata } from '../../models/meeting-job';
 import { handleStepFunctionError, recordErrorMetric } from '../../utils/error-handler';
 
 const logger = new Logger({ lambda: 'minutes-generator' });
@@ -121,7 +122,7 @@ export async function handler(event: MinutesGeneratorEvent): Promise<MinutesGene
 
     // 5. 議事録をMarkdown形式でS3に保存（整形されたTranscriptを含む）
     const minutesS3Key = `${userId}/${jobId}/minutes.md`;
-    const markdownContent = formatMinutesAsMarkdown(minutes, formattedTranscript);
+    const markdownContent = formatMinutesAsMarkdown(minutes, formattedTranscript, metadata);
 
     await s3Client.send(
       new PutObjectCommand({
@@ -241,9 +242,37 @@ function extractSummaryPreview(summary: string): string {
 /**
  * 議事録をMarkdown形式にフォーマットする
  */
-function formatMinutesAsMarkdown(minutes: Minutes, formattedTranscript: string): string {
+function formatMinutesAsMarkdown(minutes: Minutes, formattedTranscript: string, metadata?: MeetingJobMetadata): string {
   let markdown = `# 議事録\n\n`;
-  markdown += `**生成日時**: ${new Date(minutes.generatedAt).toLocaleString('ja-JP')}\n\n`;
+
+  // ヘッダー: 会議名・開催日時・参加者を記載（生成日時は不要）
+  if (metadata?.meetingTitle) {
+    markdown += `**会議名**: ${metadata.meetingTitle}\n\n`;
+  }
+  if (metadata?.meetingDate) {
+    let dateStr = metadata.meetingDate;
+    if (metadata.meetingEndDate) {
+      // 終了日時がある場合は時間帯表示
+      const start = new Date(metadata.meetingDate);
+      const end = new Date(metadata.meetingEndDate);
+      const startFormatted = start.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const endFormatted = end.toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+      dateStr = `${startFormatted} 〜 ${endFormatted}`;
+    } else {
+      const start = new Date(metadata.meetingDate);
+      dateStr = start.toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+    markdown += `**開催日時**: ${dateStr}\n\n`;
+  }
+  if (metadata?.participants && metadata.participants.length > 0) {
+    // 参加者を「会社名 / 名前」形式でフォーマット
+    const participantList = metadata.participants.map(p => {
+      if (typeof p === 'string') return p;
+      if (p.company && p.company.trim()) return `${p.company} / ${p.name}`;
+      return p.name;
+    }).join('、');
+    markdown += `**参加者**: ${participantList}\n\n`;
+  }
 
   // 概要
   markdown += `## 概要\n\n`;
